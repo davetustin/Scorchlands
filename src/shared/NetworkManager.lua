@@ -21,8 +21,9 @@ end
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local remoteEvents = {}
-local remoteFunctions = {}
+-- Internal tables to store references to created remotes (primarily used by server for quick lookup)
+local _remoteEvents = {}
+local _remoteFunctions = {}
 
 --[[
     NetworkManager.RegisterRemoteEvent(eventName)
@@ -30,7 +31,7 @@ local remoteFunctions = {}
     @param eventName string: The name of the RemoteEvent (should match Constants.NETWORK_EVENTS).
 ]]
 function NetworkManager.RegisterRemoteEvent(eventName)
-    if remoteEvents[eventName] then
+    if _remoteEvents[eventName] then
         if Logger then
             Logger.Warn("NetworkManager", "RemoteEvent '%s' already registered.", eventName)
         else
@@ -41,7 +42,7 @@ function NetworkManager.RegisterRemoteEvent(eventName)
     local remoteEvent = Instance.new("RemoteEvent")
     remoteEvent.Name = eventName
     remoteEvent.Parent = ReplicatedStorage -- Or a dedicated "Remotes" folder
-    remoteEvents[eventName] = remoteEvent
+    _remoteEvents[eventName] = remoteEvent -- Cache it internally
     if Logger then
         Logger.Debug("NetworkManager", "Registered RemoteEvent: %s", eventName)
     end
@@ -53,7 +54,7 @@ end
     @param functionName string: The name of the RemoteFunction (should match Constants.NETWORK_EVENTS).
 ]]
 function NetworkManager.RegisterRemoteFunction(functionName)
-    if remoteFunctions[functionName] then
+    if _remoteFunctions[functionName] then
         if Logger then
             Logger.Warn("NetworkManager", "RemoteFunction '%s' already registered.", functionName)
         else
@@ -64,7 +65,7 @@ function NetworkManager.RegisterRemoteFunction(functionName)
     local remoteFunction = Instance.new("RemoteFunction")
     remoteFunction.Name = functionName
     remoteFunction.Parent = ReplicatedStorage -- Or a dedicated "Remotes" folder
-    remoteFunctions[functionName] = remoteFunction
+    _remoteFunctions[functionName] = remoteFunction -- Cache it internally
     if Logger then
         Logger.Debug("NetworkManager", "Registered RemoteFunction: %s", functionName)
     end
@@ -75,37 +76,25 @@ end
     Retrieves a registered RemoteEvent.
     If called on the client, it will wait for the RemoteEvent to exist in ReplicatedStorage.
     @param eventName string: The name of the RemoteEvent.
-    @return RemoteEvent: The RemoteEvent instance, or nil if not found (on server) or timeout (on client).
+    @return RemoteEvent: The RemoteEvent instance, or nil if not found or timeout (on client).
 ]]
 function NetworkManager.GetRemoteEvent(eventName)
-    local event = remoteEvents[eventName]
-    if event then
-        return event
-    end
-
-    -- If not found in our internal table, try to find it in ReplicatedStorage
-    -- and potentially wait for it if on the client.
     if RunService:IsClient() then
-        -- On client, wait for it to be replicated from the server
+        -- On client, always wait for it to be replicated from the server
         local replicatedEvent = ReplicatedStorage:WaitForChild(eventName, 10) -- 10-second timeout
         if replicatedEvent and replicatedEvent:IsA("RemoteEvent") then
-            remoteEvents[eventName] = replicatedEvent -- Cache it for future calls
             return replicatedEvent
         else
-            if Logger then
-                Logger.Error("NetworkManager", "Client: Timed out or failed to get RemoteEvent: %s", eventName)
-            else
-                error("NetworkManager: Client: Timed out or failed to get RemoteEvent: " .. eventName)
-            end
-            return nil -- Return nil on timeout/failure
+            -- Use error() on client if it fails to ensure developer sees it
+            error("NetworkManager: Client: Timed out or failed to get RemoteEvent: " .. eventName)
         end
     else -- On server
-        if Logger then
-            Logger.Error("NetworkManager", "Server: Attempted to get unregistered RemoteEvent: %s", eventName)
-        else
+        local event = _remoteEvents[eventName]
+        if not event then
+            -- Use error() on server if it fails
             error("NetworkManager: Server: Attempted to get unregistered RemoteEvent: " .. eventName)
         end
-        return nil
+        return event
     end
 end
 
@@ -114,34 +103,25 @@ end
     Retrieves a registered RemoteFunction.
     If called on the client, it will wait for the RemoteFunction to exist in ReplicatedStorage.
     @param functionName string: The name of the RemoteFunction.
-    @return RemoteFunction: The RemoteFunction instance, or nil if not found (on server) or timeout (on client).
+    @return RemoteFunction: The RemoteFunction instance, or nil if not found or timeout (on client).
 ]]
 function NetworkManager.GetRemoteFunction(functionName)
-    local func = remoteFunctions[functionName]
-    if func then
-        return func
-    end
-
     if RunService:IsClient() then
+        -- On client, always wait for it to be replicated from the server
         local replicatedFunction = ReplicatedStorage:WaitForChild(functionName, 10) -- 10-second timeout
         if replicatedFunction and replicatedFunction:IsA("RemoteFunction") then
-            remoteFunctions[functionName] = replicatedFunction -- Cache it for future calls
             return replicatedFunction
         else
-            if Logger then
-                Logger.Error("NetworkManager", "Client: Timed out or failed to get RemoteFunction: %s", functionName)
-            else
-                error("NetworkManager: Client: Timed out or failed to get RemoteFunction: " .. functionName)
-            end
-            return nil
+            -- Use error() on client if it fails to ensure developer sees it
+            error("NetworkManager: Client: Timed out or failed to get RemoteFunction: " .. functionName)
         end
     else -- On server
-        if Logger then
-            Logger.Error("NetworkManager", "Server: Attempted to get unregistered RemoteFunction: %s", functionName)
-        else
+        local func = _remoteFunctions[functionName]
+        if not func then
+            -- Use error() on server if it fails
             error("NetworkManager: Server: Attempted to get unregistered RemoteFunction: " .. functionName)
         end
-        return nil
+        return func
     end
 end
 

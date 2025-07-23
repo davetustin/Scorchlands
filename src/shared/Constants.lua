@@ -47,11 +47,38 @@ Constants.SUNLIGHT_DAMAGE_AMOUNT = 5 -- health points per interval
 Constants.STRUCTURE_DEGRADATION_RATE = 0.01 -- percentage per second
 Constants.MAX_HEALTH = 100
 
--- NEW: Sunlight damage toggles
+-- Sunlight damage toggles
 Constants.PLAYER_SUNLIGHT_DAMAGE_ENABLED_DEFAULT = false -- Set to false as requested
 Constants.BUILDING_SUNLIGHT_DAMAGE_ENABLED_DEFAULT = true -- Default to true for buildings
 
--- NEW: Player Health Regeneration toggle
+-- Player Health Regeneration toggle
 Constants.PLAYER_HEALTH_REGEN_ENABLED_DEFAULT = false -- Set to false by default as requested
+
+-- Building System Constants
+Constants.STRUCTURE_TYPES = {
+    WALL = "Wall",
+    FLOOR = "Floor",
+    ROOF = "Roof",
+}
+Constants.MAX_STRUCTURE_HEALTH = 100 -- Default health for newly placed structures
+
+-- NEW: Default dimensions for basic building parts (in studs)
+Constants.BUILDING_PART_DEFAULTS = {
+    Wall = {
+        Size = Vector3.new(4, 8, 0.5), -- Common wall size
+        Color = BrickColor.new("Dark stone grey"),
+        Material = Enum.Material.Concrete,
+    },
+    Floor = {
+        Size = Vector3.new(8, 0.5, 8), -- Common floor tile size
+        Color = BrickColor.new("Medium stone grey"),
+        Material = Enum.Material.Concrete,
+    },
+    Roof = {
+        Size = Vector3.new(8, 0.5, 8), -- Simple flat roof for now
+        Color = BrickColor.new("Dark grey"),
+        Material = Enum.Material.Slate,
+    },
+}
 
 return Constants

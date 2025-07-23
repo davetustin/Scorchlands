@@ -11,45 +11,48 @@
 -- Require core modules based on the confirmed folder structure:
 -- Constants is in ReplicatedStorage.Shared
 local Constants = require(game.ReplicatedStorage.Shared.Constants)
--- All other core modules are in the 'Core' folder, which is likely a sibling to this script
--- if this script itself is named 'Core' and placed directly under ServerScriptService.
-local CoreModulesPath = script.Parent:WaitForChild("Core")
-
-local Logger = require(CoreModulesPath.Logger)
-local ServiceRegistry = require(CoreModulesPath.ServiceRegistry)
-local GlobalRegistry = require(CoreModulesPath.GlobalRegistry)
-local DataManager = require(CoreModulesPath.DataManager)
--- CORRECTED: NetworkManager is now in ReplicatedStorage.Shared
+-- All other core modules are in the same folder as this script (Core folder)
+local Logger = require(script.Logger)
+local ServiceRegistry = require(script.ServiceRegistry)
+local GlobalRegistry = require(script.GlobalRegistry)
+local DataManager = require(script.DataManager)
+-- NetworkManager is now in ReplicatedStorage.Shared
 local NetworkManager = require(game.ReplicatedStorage.Shared.NetworkManager)
-local ObjectPool = require(CoreModulesPath.ObjectPool)
-local StateValidator = require(CoreModulesPath.StateValidator)
-local BaseService = require(CoreModulesPath.BaseService)
+local ObjectPool = require(script.ObjectPool)
+local StateValidator = require(script.StateValidator)
+local BaseService = require(script.BaseService)
 
 -- NEW SERVICES
--- SunlightSystem is in the 'Systems' folder, using WaitForChild for robustness
-local SystemsModulesPath = script.Parent:WaitForChild("Systems") -- Assuming Systems is also a sibling folder
-local SunlightSystem = require(SystemsModulesPath.SunlightSystem)
-local CommandSystem = require(CoreModulesPath.CommandSystem)
+-- SunlightSystem is in the 'Systems' folder, which is a sibling to Core in ServerScriptService
+local SystemsModulesPath = game.ServerScriptService:WaitForChild("Systems")
+local SunlightSystem = require(SystemsModulesPath:WaitForChild("SunlightSystem"))
+local CommandSystem = require(script.CommandSystem)
+-- NEW: BuildingSystem
+local BuildingSystem = require(SystemsModulesPath:WaitForChild("BuildingSystem"))
 
 
 -- Set up the Logger with the default log level from Constants
-Logger.SetLogLevel(Constants.DEFAULT_LOG_LEVEL)
+-- Logger.SetLogLevel(Constants.DEFAULT_LOG_LEVEL) -- Temporarily commented out
 Logger.Info("init.server", "Server initialization started.")
 
 -- Register network events (should be done on both client and server)
 -- This is crucial for establishing communication channels.
-for _, eventName in pairs(Constants.NETWORK_EVENTS) do
-    NetworkManager.RegisterRemoteEvent(eventName)
-end
+-- for _, eventName in pairs(Constants.NETWORK_EVENTS) do -- Temporarily commented out
+--     NetworkManager.RegisterRemoteEvent(eventName)
+-- end
 -- Also register the new command system events
 NetworkManager.RegisterRemoteEvent("CommandExecute")
 NetworkManager.RegisterRemoteEvent("CommandFeedback")
+-- NEW: Register BuildingSystem network events
+NetworkManager.RegisterRemoteFunction(Constants.NETWORK_EVENTS.CLIENT_REQUEST_BUILD)
 
 
 -- Register all core services with the ServiceRegistry
 -- Register the new SunlightSystem and CommandSystem
 ServiceRegistry.RegisterService("SunlightSystem", SunlightSystem)
 ServiceRegistry.RegisterService("CommandSystem", CommandSystem)
+-- NEW: Register BuildingSystem
+ServiceRegistry.RegisterService("BuildingSystem", BuildingSystem)
 
 -- Register DataManager and NetworkManager if they were designed as services
 -- For now, they are utility modules, so we'll just make them globally accessible if needed.

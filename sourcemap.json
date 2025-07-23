@@ -1,107 +1,130 @@
 {
-    "name": "Scorchlands",
-    "className": "DataModel",
-    "filePaths": [
-        "default.project.json"
-    ],
-    "children": [
+  "name": "Scorchlands",
+  "className": "DataModel",
+  "filePaths": [
+    "default.project.json"
+  ],
+  "children": [
+    {
+      "name": "ReplicatedStorage",
+      "className": "ReplicatedStorage",
+      "children": [
         {
-            "name": "ReplicatedStorage",
-            "className": "ReplicatedStorage",
-            "children": [
-                {
-                    "name": "Shared",
-                    "className": "Folder",
-                    "children": [
-                        {
-                            "name": "Constants",
-                            "className": "ModuleScript",
-                            "filePaths": [
-                                "src/shared\\Constants.lua"
-                            ]
-                        }
-                    ]
-                }
-            ]
-        },
-        {
-            "name": "ServerScriptService",
-            "className": "ServerScriptService",
-            "children": [
-                {
-                    "name": "Core",
-                    "className": "Script",
-                    "filePaths": [
-                        "src/server/Core\\init.server.lua"
-                    ],
-                    "children": [
-                        {
-                            "name": "BaseService",
-                            "className": "ModuleScript",
-                            "filePaths": [
-                                "src/server/Core\\BaseService.lua"
-                            ]
-                        },
-                        {
-                            "name": "Logger",
-                            "className": "ModuleScript",
-                            "filePaths": [
-                                "src/server/Core\\Logger.lua"
-                            ]
-                        },
-                        {
-                            "name": "ServiceRegistry",
-                            "className": "ModuleScript",
-                            "filePaths": [
-                                "src/server/Core\\ServiceRegistry.lua"
-                            ]
-                        }
-                    ]
-                },
-                {
-                    "name": "Systems",
-                    "className": "Folder",
-                    "children": [
-                        {
-                            "name": "GameSystem",
-                            "className": "ModuleScript",
-                            "filePaths": [
-                                "src/server/Systems\\GameService.lua"
-                            ]
-                        },
-                        {
-                            "name": "SunlightSystem",
-                            "className": "ModuleScript",
-                            "filePaths": [
-                                "src/server/Systems\\SunlightSystem.lua"
-                            ]
-                        }
-                    ]
-                },
-                {
-                    "name": "init",
-                    "className": "Script"
-                }
-            ]
-        },
-        {
-            "name": "StarterPlayer",
-            "className": "StarterPlayer",
-            "children": [
-                {
-                    "name": "StarterPlayerScripts",
-                    "className": "StarterPlayerScripts",
-                    "children": [
-                        {
-                            "name": "Client",
-                            "className": "LocalScript",
-                            "filePaths": [
-                                "src/client\\init.client.lua"
-                            ]
-                        }
-                    ]
-                }
-            ]
+          "name": "Shared",
+          "className": "Folder",
+          "children": [
+            {
+              "name": "Constants",
+              "className": "ModuleScript",
+              "filePaths": [
+                "src/shared\\Constants.lua"
+              ]
+            }
+          ]
         }
-    ]
+      ]
+    },
+    {
+      "name": "ServerScriptService",
+      "className": "ServerScriptService",
+      "children": [
+        {
+          "name": "Core",
+          "className": "Folder",
+          "children": [
+            {
+              "name": "init.server",
+              "className": "Script",
+              "filePaths": [
+                "src/server/Core\\init.server.lua"
+              ]
+            },
+            {
+              "name": "BaseService",
+              "className": "ModuleScript",
+              "filePaths": [
+                "src/server/Core\\BaseService.lua"
+              ]
+            },
+            {
+              "name": "Logger",
+              "className": "ModuleScript",
+              "filePaths": [
+                "src/server/Core\\Logger.lua"
+              ]
+            },
+            {
+              "name": "ServiceRegistry",
+              "className": "ModuleScript",
+              "filePaths": [
+                "src/server/Core\\ServiceRegistry.lua"
+              ]
+            },
+            {
+              "name": "CommandSystem",
+              "className": "ModuleScript",
+              "filePaths": [
+                "src/server/Core\\CommandSystem.lua"
+              ]
+            },
+            {
+              "name": "DataManager",
+              "className": "ModuleScript",
+              "filePaths": [
+                "src/server/Core\\DataManager.lua"
+              ]
+            },
+            {
+              "name": "GlobalRegistry",
+              "className": "ModuleScript",
+              "filePaths": [
+                "src/server/Core\\GlobalRegistry.lua"
+              ]
+            },
+            {
+              "name": "ObjectPool",
+              "className": "ModuleScript",
+              "filePaths": [
+                "src/server/Core\\ObjectPool.lua"
+              ]
+            },
+            {
+              "name": "StateValidator",
+              "className": "ModuleScript",
+              "filePaths": [
+                "src/server/Core\\StateValidator.lua"
+              ]
+            }
+          ]
+        },
+        {
+          "name": "Systems",
+          "className": "Folder",
+          "children": [
+            {
+              "name": "GameSystem",
+              "className": "ModuleScript",
+              "filePaths": [
+                "src/server/Systems\\GameService.lua"
+              ]
+            },
+            {
+              "name": "SunlightSystem",
+              "className": "ModuleScript",
+              "filePaths": [
+                "src/server/Systems\\SunlightSystem.lua"
+              ]
+            },
+            {
+              "name": "BuildingSystem",
+              "className": "ModuleScript",
+              "filePaths": [
+                "src/server/Systems\\BuildingSystem.lua"
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
 }
