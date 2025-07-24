@@ -5,7 +5,7 @@
     preventing race conditions and dependency issues.
 ]]
 local ServiceRegistry = {}
-local Logger = require(script.Parent.Logger)
+local Logger = require(game.ReplicatedStorage.Shared.Logger)
 local BaseService = require(script.Parent.BaseService)
 
 local services = {} -- Stores service instances by name

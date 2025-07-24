@@ -6,7 +6,7 @@
     This is a generic placeholder.
 ]]
 local StateValidator = {}
-local Logger = require(script.Parent.Logger)
+local Logger = require(game.ReplicatedStorage.Shared.Logger)
 -- ADDED: Constants is needed for MAX_HEALTH validation
 local Constants = require(game.ReplicatedStorage.Shared.Constants)
 

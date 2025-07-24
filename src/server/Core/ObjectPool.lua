@@ -6,7 +6,7 @@
     This is a generic placeholder.
 ]]
 local ObjectPool = {}
-local Logger = require(script.Parent.Logger)
+local Logger = require(game.ReplicatedStorage.Shared.Logger)
 
 function ObjectPool.new(objectFactory, initialSize, resetFunction)
     local self = setmetatable({}, ObjectPool)

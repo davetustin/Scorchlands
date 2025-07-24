@@ -6,7 +6,7 @@
     Focuses on secure and robust data handling.
 ]]
 local DataManager = {}
-local Logger = require(script.Parent.Logger)
+local Logger = require(game.ReplicatedStorage.Shared.Logger)
 -- CORRECTED: Constants is in ReplicatedStorage.Shared, not script.Parent
 local Constants = require(game.ReplicatedStorage.Shared.Constants)
 

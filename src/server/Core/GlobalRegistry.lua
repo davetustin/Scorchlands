@@ -6,7 +6,7 @@
     Avoids excessive use of global variables.
 ]]
 local GlobalRegistry = {}
-local Logger = require(script.Parent.Logger)
+local Logger = require(game.ReplicatedStorage.Shared.Logger)
 
 local registry = {}
 
