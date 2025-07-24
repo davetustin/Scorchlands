@@ -1,6 +1,3 @@
---!native
---!optimize
-
 --[[
     shared/Constants.lua
     Description: Centralized constants for the game.

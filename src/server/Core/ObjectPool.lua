@@ -1,6 +1,3 @@
---!native
---!optimize
-
 --[[
     Core/ObjectPool.lua
     Description: Implements an object pooling pattern for efficient object reuse.

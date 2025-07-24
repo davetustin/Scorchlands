@@ -1,6 +1,3 @@
---!native
---!optimize
-
 --[[
     Core/Logger.lua
     Description: A robust logging utility.

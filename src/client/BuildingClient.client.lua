@@ -1,6 +1,3 @@
---!native
---!optimize
-
 --[[
     client/BuildingClient.client.luau
     Description: Handles client-side logic for the base building system.
@@ -86,7 +83,7 @@ function BuildingClient:DisableBuildingMode()
     end
 
     print("BuildingClient: Building mode DISABLED.")
-END
+end
 
 --[[
     BuildingClient:ToggleBuildingMode(structureType)

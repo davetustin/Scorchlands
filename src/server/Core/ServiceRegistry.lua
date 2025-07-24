@@ -1,6 +1,3 @@
---!native
---!optimize
-
 --[[
     Core/ServiceRegistry.lua
     Description: Manages the registration, initialization, and retrieval of game services.

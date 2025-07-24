@@ -1,6 +1,3 @@
---!native
---!optimize
-
 --[[
     Systems/GameSystem.lua
     Description: Comprehensive game management system for Scorchlands.

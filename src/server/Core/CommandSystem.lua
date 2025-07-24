@@ -1,6 +1,3 @@
---!native
---!optimize
-
 --[[
     Core/CommandSystem.lua
     Description: A scalable system for handling in-game admin commands.

@@ -1,6 +1,3 @@
---!native
---!optimize
-
 --[[
     Core/BaseService.lua
     Description: Base class for all game services.

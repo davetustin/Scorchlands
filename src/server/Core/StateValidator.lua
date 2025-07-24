@@ -1,6 +1,3 @@
---!native
---!optimize
-
 --[[
     Core/StateValidator.lua
     Description: Provides utilities for validating game states and data.

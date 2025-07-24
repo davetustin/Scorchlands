@@ -1,6 +1,3 @@
---!native
---!optimize
-
 --[[
     Systems/BuildingSystem.lua
     Description: Manages the placement and state of player-built structures.

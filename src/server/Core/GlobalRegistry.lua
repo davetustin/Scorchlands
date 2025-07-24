@@ -1,6 +1,3 @@
---!native
---!optimize
-
 --[[
     Core/GlobalRegistry.lua
     Description: A central registry for global instances and data.

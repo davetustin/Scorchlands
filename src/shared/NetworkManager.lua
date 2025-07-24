@@ -1,6 +1,3 @@
---!native
---!optimize
-
 --[[
     ReplicatedStorage/Shared/NetworkManager.lua
     Description: Manages client-server communication via RemoteEvents and RemoteFunctions.

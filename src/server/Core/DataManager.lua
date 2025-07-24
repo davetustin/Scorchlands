@@ -1,6 +1,3 @@
---!native
---!optimize
-
 --[[
     Core/DataManager.lua
     Description: Manages game data persistence (loading and saving).

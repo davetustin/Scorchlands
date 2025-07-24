@@ -1,6 +1,3 @@
---!native
---!optimize
-
 --[[
     client/init.client.luau
     Description: The main client-side initialization script for Scorchlands.

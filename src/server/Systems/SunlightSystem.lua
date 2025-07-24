@@ -1,6 +1,3 @@
---!native
---!optimize
-
 --[[
     Systems/SunlightSystem.lua
     Description: Manages player exposure to sunlight and applies damage.
