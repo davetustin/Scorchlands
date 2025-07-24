@@ -12,9 +12,6 @@ local Constants = require(game.ReplicatedStorage.Shared.Constants)
 local NetworkManager = require(game.ReplicatedStorage.Shared.NetworkManager)
 local ServiceRegistry = require(script.Parent.ServiceRegistry) -- To access other services for commands
 
-local Players = game:GetService("Players")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-
 local CommandSystem = {}
 CommandSystem.__index = CommandSystem
 setmetatable(CommandSystem, BaseService) -- Inherit from BaseService

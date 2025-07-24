@@ -5,17 +5,13 @@
     server-side validation, and manages the creation of the physical objects.
     Inherits from BaseService.
 ]]
-local BaseService = require(game.ServerScriptService.Core.BaseService)
-local Logger = require(game.ServerScriptService.Core.Logger)
+local BaseService = require(game.ServerScriptService.Server.Core.BaseService)
+local Logger = require(game.ServerScriptService.Server.Core.Logger)
 local Constants = require(game.ReplicatedStorage.Shared.Constants)
-local StateValidator = require(game.ServerScriptService.Core.StateValidator)
+local StateValidator = require(game.ServerScriptService.Server.Core.StateValidator)
 local NetworkManager = require(game.ReplicatedStorage.Shared.NetworkManager)
-local DataManager = require(game.ServerScriptService.Core.DataManager) -- To save/load base data
-
-local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
--- REMOVED: ServerStorage is no longer needed for models
-local Workspace = game:GetService("Workspace") -- Ensure Workspace is properly referenced
+local Workspace = game:GetService("Workspace")
 
 local BuildingSystem = {}
 BuildingSystem.__index = BuildingSystem

@@ -10,24 +10,21 @@
     },
     "ServerScriptService": {
       "$className": "ServerScriptService",
-      "Core": {
-        "$path": "src/server/Core"
+      "Server": {
+        "$path": "src/server",
+        "$properties": {
+          "ClassName": "ModuleScript"
+        }
       },
-      "Systems": {
-        "$path": "src/server/Systems"
+      "init.server": {
+        "$path": "src/server/init.server.lua",
+        "$className": "Script"
       }
     },
     "StarterPlayer": {
-      "$className": "StarterPlayer",
       "StarterPlayerScripts": {
-        "$className": "StarterPlayerScripts",
-        "init.client": {
-          "$path": "src/client/init.client.luau",
-          "$className": "LocalScript"
-        },
-        "BuildingClient": {
-          "$path": "src/client/BuildingClient.client.luau",
-          "$className": "ModuleScript"
+        "Client": {
+          "$path": "src/client"
         }
       }
     },

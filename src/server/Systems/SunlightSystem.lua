@@ -6,13 +6,10 @@
     Inherits from BaseService.
 ]]
 -- CORRECTED: Require BaseService, Logger, StateValidator from the Core folder
-local BaseService = require(game.ServerScriptService.Core.BaseService)
-local Logger = require(game.ServerScriptService.Core.Logger)
+local BaseService = require(game.ServerScriptService.Server.Core.BaseService)
+local Logger = require(game.ServerScriptService.Server.Core.Logger)
 local Constants = require(game.ReplicatedStorage.Shared.Constants)
-local StateValidator = require(game.ServerScriptService.Core.StateValidator) -- For validating health changes
--- CORRECTED: NetworkManager is now in ReplicatedStorage.Shared
-local NetworkManager = require(game.ReplicatedStorage.Shared.NetworkManager)
-
+local StateValidator = require(game.ServerScriptService.Server.Core.StateValidator) -- For validating health changes
 
 local RunService = game:GetService("RunService")
 local Players = game:GetService("Players")

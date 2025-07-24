@@ -6,14 +6,13 @@
     to be accessible by both server and client scripts.
 ]]
 local NetworkManager = {}
-local Constants = require(script.Parent.Constants) -- Constants is in the same Shared folder
 
 -- Attempt to require Logger only if running on the server.
 -- On the client, ServerScriptService does not exist, so this will be nil.
 local Logger = nil
 local RunService = game:GetService("RunService")
 if RunService:IsServer() then
-    Logger = require(game.ServerScriptService.Core.Logger)
+    Logger = require(game.ServerScriptService.Server.Core.Logger)
 end
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")

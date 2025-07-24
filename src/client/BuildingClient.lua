@@ -8,6 +8,7 @@ local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
+local Workspace = game:GetService("Workspace")
 
 local Constants = require(ReplicatedStorage.Shared.Constants)
 local NetworkManager = require(ReplicatedStorage.Shared.NetworkManager)
@@ -112,15 +113,15 @@ local function UpdatePreview()
     local raycastResult = Workspace:Raycast(PlayerMouse.Origin, PlayerMouse.Direction * 1000)
 
     local targetPosition = nil
-    local targetNormal = nil
+    local _targetNormal = nil
 
     if raycastResult then
         targetPosition = raycastResult.Position
-        targetNormal = raycastResult.Normal
+        _targetNormal = raycastResult.Normal
     else
         -- Fallback if raycast hits nothing (e.g., pointing at sky)
         targetPosition = mouseHit.Position
-        targetNormal = Vector3.new(0, 1, 0) -- Assume flat ground
+        _targetNormal = Vector3.new(0, 1, 0) -- Assume flat ground
     end
 
     -- Snap to grid

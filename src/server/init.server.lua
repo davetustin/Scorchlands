@@ -10,21 +10,18 @@
 local Constants = require(game.ReplicatedStorage.Shared.Constants)
 -- All other core modules are in the 'Core' folder, which is likely a sibling to this script
 -- if this script itself is named 'Core' and placed directly under ServerScriptService.
-local CoreModulesPath = script.Parent:WaitForChild("Core")
+local Server = script.Parent:WaitForChild("Server")
+local CoreModulesPath = Server.Core
+local SystemsModulesPath = Server.Systems
 
 local Logger = require(CoreModulesPath.Logger)
 local ServiceRegistry = require(CoreModulesPath.ServiceRegistry)
 local GlobalRegistry = require(CoreModulesPath.GlobalRegistry)
 local DataManager = require(CoreModulesPath.DataManager)
--- NetworkManager is now in ReplicatedStorage.Shared
 local NetworkManager = require(game.ReplicatedStorage.Shared.NetworkManager)
-local ObjectPool = require(CoreModulesPath.ObjectPool)
-local StateValidator = require(CoreModulesPath.StateValidator)
-local BaseService = require(CoreModulesPath.BaseService)
 
 -- NEW SERVICES
 -- SunlightSystem is in the 'Systems' folder, using WaitForChild for robustness
-local SystemsModulesPath = script.Parent:WaitForChild("Systems") -- Assuming Systems is also a sibling folder
 local SunlightSystem = require(SystemsModulesPath.SunlightSystem)
 local CommandSystem = require(CoreModulesPath.CommandSystem)
 -- NEW: BuildingSystem

@@ -44,7 +44,7 @@ function ServiceRegistry.RegisterService(serviceName, serviceClass)
         return
     end
 
-    if not serviceClass or not serviceClass.new or not typeof(serviceClass.new) == "function" then
+    if not serviceClass or not serviceClass.new or typeof(serviceClass.new) ~= "function" then
         Logger.Error("ServiceRegistry", "Service '%s' class is invalid. Must have a 'new' constructor.", serviceName)
         return
     end
