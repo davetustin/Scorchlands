@@ -18,10 +18,16 @@
       }
     },
     "StarterPlayer": {
+      "$className": "StarterPlayer",
       "StarterPlayerScripts": {
         "$className": "StarterPlayerScripts",
-        "Client": {
-          "$path": "src/client"
+        "init.client": {
+          "$path": "src/client/init.client.luau",
+          "$className": "LocalScript"
+        },
+        "BuildingClient": {
+          "$path": "src/client/BuildingClient.client.luau",
+          "$className": "ModuleScript"
         }
       }
     },

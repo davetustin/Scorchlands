@@ -28,8 +28,8 @@ local _currentPreviewPrimaryPart = nil
 local _gridSize = 4 -- All building parts will snap to a 4x4 grid (adjust based on your part sizes)
 local _currentRotation = 0 -- 0, 90, 180, 270 degrees
 
--- Get the RemoteFunction for building
-local ClientRequestBuild = NetworkManager.GetRemoteFunction(Constants.NETWORK_EVENTS.CLIENT_REQUEST_BUILD)
+-- REMOVED: Get RemoteFunction here. It will be retrieved in Init()
+local ClientRequestBuild = nil
 
 --[[
     BuildingClient:EnableBuildingMode(structureType)
@@ -86,7 +86,7 @@ function BuildingClient:DisableBuildingMode()
     end
 
     print("BuildingClient: Building mode DISABLED.")
-end
+END
 
 --[[
     BuildingClient:ToggleBuildingMode(structureType)
@@ -163,13 +163,17 @@ function BuildingClient:HandleInput(input, gameProcessedEvent)
         if input.UserInputType == Enum.UserInputType.MouseButton1 then -- Left click to place
             local cframeToPlace = _currentPreviewPrimaryPart.CFrame
             -- Send build request to server
-            local success, message = ClientRequestBuild:InvokeServer(_selectedStructureType, cframeToPlace)
-            if success then
-                print("BuildingClient: Successfully sent build request for " .. _selectedStructureType)
-                -- Optionally, disable building mode after placement or keep it active
-                -- self:DisableBuildingMode()
+            if ClientRequestBuild then -- Ensure RemoteFunction is available
+                local success, message = ClientRequestBuild:InvokeServer(_selectedStructureType, cframeToPlace)
+                if success then
+                    print("BuildingClient: Successfully sent build request for " .. _selectedStructureType)
+                    -- Optionally, disable building mode after placement or keep it active
+                    -- self:DisableBuildingMode()
+                else
+                    warn("BuildingClient: Failed to place " .. _selectedStructureType .. ": " .. message)
+                end
             else
-                warn("BuildingClient: Failed to place " .. _selectedStructureType .. ": " .. message)
+                warn("BuildingClient: ClientRequestBuild RemoteFunction not available.")
             end
         elseif input.UserInputType == Enum.UserInputType.MouseButton2 then -- Right click to rotate
             _currentRotation = (_currentRotation + 90) % 360
@@ -182,6 +186,12 @@ end
 
 -- Initialize the client-side building system
 function BuildingClient.Init()
+    -- NEW: Get the RemoteFunction here, ensuring NetworkManager is fully loaded
+    ClientRequestBuild = NetworkManager.GetRemoteFunction(Constants.NETWORK_EVENTS.CLIENT_REQUEST_BUILD)
+    if not ClientRequestBuild then
+        error("BuildingClient: Failed to get ClientRequestBuild RemoteFunction during initialization.")
+    end
+
     -- Connect Heartbeat to update preview position
     RunService.Heartbeat:Connect(UpdatePreview)
 

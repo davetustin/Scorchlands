@@ -3,16 +3,16 @@
 
 --[[
     client/init.client.luau
-    Description: Main client-side initialization script for Scorchlands.
-    This script sets up the client-side systems, including command processing,
-    building system, and communication with the server.
+    Description: The main client-side initialization script for Scorchlands.
+    This script handles client-specific setup, including UI, input, and
+    communication with server-side systems like the CommandSystem.
 ]]
 
--- Require shared modules
+-- Require necessary modules
 local Constants = require(game.ReplicatedStorage.Shared.Constants)
+-- NetworkManager is now correctly located in ReplicatedStorage.Shared for client access.
 local NetworkManager = require(game.ReplicatedStorage.Shared.NetworkManager)
 
--- Get Roblox services
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
 local TextChatService = game:GetService("TextChatService") -- Modern chat service
@@ -28,8 +28,8 @@ if not CommandExecuteEvent or not CommandFeedbackEvent then
     -- This is a client-side warning, not a fatal error, as the game might still function without commands.
 end
 
--- TEMPORARILY COMMENTED OUT: BuildingClient require
--- local BuildingClient = require(script:WaitForChild("BuildingClient"))
+-- This line expects BuildingClient to be a ModuleScript directly under PlayerScripts.
+local BuildingClient = require(script.Parent:WaitForChild("BuildingClient"))
 
 --[[
     handleChatInput(message)
@@ -51,20 +51,20 @@ local function handleChatInput(message)
         end
         return true -- Indicate that the message was handled as a command
     end
-    -- TEMPORARILY COMMENTED OUT: Building commands
-    -- if message:lower() == "/build wall" then
-    --     BuildingClient:EnableBuildingMode(Constants.STRUCTURE_TYPES.WALL)
-    --     return true
-    -- elseif message:lower() == "/build floor" then
-    --     BuildingClient:EnableBuildingMode(Constants.STRUCTURE_TYPES.FLOOR)
-    --     return true
-    -- elseif message:lower() == "/build roof" then
-    --     BuildingClient:EnableBuildingMode(Constants.STRUCTURE_TYPES.ROOF)
-    --     return true
-    -- elseif message:lower() == "/build off" then
-    --     BuildingClient:DisableBuildingMode()
-    --     return true
-    -- end
+    -- NEW: Add commands to toggle building mode via chat for testing
+    if message:lower() == "/build wall" then
+        BuildingClient:EnableBuildingMode(Constants.STRUCTURE_TYPES.WALL)
+        return true
+    elseif message:lower() == "/build floor" then
+        BuildingClient:EnableBuildingMode(Constants.STRUCTURE_TYPES.FLOOR)
+        return true
+    elseif message:lower() == "/build roof" then
+        BuildingClient:EnableBuildingMode(Constants.STRUCTURE_TYPES.ROOF)
+        return true
+    elseif message:lower() == "/build off" then
+        BuildingClient:DisableBuildingMode()
+        return true
+    end
     return false -- Message was not a command
 end
 
@@ -107,8 +107,8 @@ if CommandFeedbackEvent then
     print("Client: CommandFeedback listener connected.")
 end
 
--- TEMPORARILY COMMENTED OUT: BuildingClient initialization
--- BuildingClient.Init()
+-- Initialize the client-side building system
+BuildingClient.Init()
 
 print("Client: init.client.luau finished initialization.")
 
