@@ -1,12 +1,12 @@
 --[[
-    Core/Logger.lua
-    Description: A robust logging utility.
+    Shared/Logger.lua
+    Description: A robust logging utility for both client and server.
     Provides categorized logging (DEBUG, INFO, WARN, ERROR, FATAL) with
     timestamps and source information. Useful for debugging, monitoring,
     and post-mortem analysis.
 ]]
 local Logger = {}
--- CORRECTED: Constants is in ReplicatedStorage.Shared, not script.Parent
+
 local Constants = require(game.ReplicatedStorage.Shared.Constants)
 
 local LogLevel = Constants.LOG_LEVEL
@@ -62,4 +62,4 @@ function Logger.Fatal(source, message, ...)
     end
 end
 
-return Logger
+return Logger 

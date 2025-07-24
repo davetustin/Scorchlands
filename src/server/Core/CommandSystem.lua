@@ -6,7 +6,7 @@
     Inherits from BaseService.
 ]]
 local BaseService = require(script.Parent.BaseService)
-local Logger = require(script.Parent.Logger)
+local Logger = require(game.ReplicatedStorage.Shared.Logger)
 local Constants = require(game.ReplicatedStorage.Shared.Constants)
 -- CORRECTED: NetworkManager is now in ReplicatedStorage.Shared
 local NetworkManager = require(game.ReplicatedStorage.Shared.NetworkManager)

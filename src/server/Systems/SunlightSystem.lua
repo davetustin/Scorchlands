@@ -7,7 +7,7 @@
 ]]
 -- CORRECTED: Require BaseService, Logger, StateValidator from the Core folder
 local BaseService = require(game.ServerScriptService.Server.Core.BaseService)
-local Logger = require(game.ServerScriptService.Server.Core.Logger)
+local Logger = require(game.ReplicatedStorage.Shared.Logger)
 local Constants = require(game.ReplicatedStorage.Shared.Constants)
 local StateValidator = require(game.ServerScriptService.Server.Core.StateValidator) -- For validating health changes
 

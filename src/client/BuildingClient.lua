@@ -184,10 +184,23 @@ end
 
 -- Initialize the client-side building system
 function BuildingClient.Init()
-    -- NEW: Get the RemoteFunction here, ensuring NetworkManager is fully loaded
-    ClientRequestBuild = NetworkManager.GetRemoteFunction(Constants.NETWORK_EVENTS.CLIENT_REQUEST_BUILD)
+    -- NEW: Get the RemoteFunction with retry mechanism to handle timing issues
+    local maxRetries = 10
+    local retryCount = 0
+    
+    while not ClientRequestBuild and retryCount < maxRetries do
+        ClientRequestBuild = NetworkManager.GetRemoteFunction(Constants.REMOTE_FUNCTIONS.CLIENT_REQUEST_BUILD)
+        if not ClientRequestBuild then
+            retryCount = retryCount + 1
+            print("BuildingClient: Attempt " .. retryCount .. " to get ClientRequestBuild RemoteFunction...")
+            task.wait(0.5) -- Wait 0.5 seconds before retrying
+        end
+    end
+    
     if not ClientRequestBuild then
-        error("BuildingClient: Failed to get ClientRequestBuild RemoteFunction during initialization.")
+        error("BuildingClient: Failed to get ClientRequestBuild RemoteFunction after " .. maxRetries .. " attempts.")
+    else
+        print("BuildingClient: Successfully obtained ClientRequestBuild RemoteFunction.")
     end
 
     -- Connect Heartbeat to update preview position

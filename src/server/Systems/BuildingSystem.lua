@@ -6,7 +6,7 @@
     Inherits from BaseService.
 ]]
 local BaseService = require(game.ServerScriptService.Server.Core.BaseService)
-local Logger = require(game.ServerScriptService.Server.Core.Logger)
+local Logger = require(game.ReplicatedStorage.Shared.Logger)
 local Constants = require(game.ReplicatedStorage.Shared.Constants)
 local StateValidator = require(game.ServerScriptService.Server.Core.StateValidator)
 local NetworkManager = require(game.ReplicatedStorage.Shared.NetworkManager)
@@ -80,7 +80,7 @@ function BuildingSystem:Start()
     Logger.Info(self:GetServiceName(), "BuildingSystem started.")
 
     -- Connect server-side listener for build requests
-    local buildRequestFunction = NetworkManager.GetRemoteFunction(Constants.NETWORK_EVENTS.CLIENT_REQUEST_BUILD)
+    local buildRequestFunction = NetworkManager.GetRemoteFunction(Constants.REMOTE_FUNCTIONS.CLIENT_REQUEST_BUILD)
     if buildRequestFunction then
         buildRequestFunction.OnServerInvoke = function(player, structureType, cframe)
             return self:PlaceStructure(player, structureType, cframe)
@@ -96,7 +96,7 @@ end
 function BuildingSystem:Stop()
     BaseService.Stop(self)
     -- Disconnect network event
-    local buildRequestFunction = NetworkManager.GetRemoteFunction(Constants.NETWORK_EVENTS.CLIENT_REQUEST_BUILD)
+    local buildRequestFunction = NetworkManager.GetRemoteFunction(Constants.REMOTE_FUNCTIONS.CLIENT_REQUEST_BUILD)
     if buildRequestFunction then
         buildRequestFunction.OnServerInvoke = nil
     end

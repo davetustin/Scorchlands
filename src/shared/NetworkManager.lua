@@ -1,21 +1,15 @@
 --[[
-    ReplicatedStorage/Shared/NetworkManager.lua
-    Description: Manages client-server communication via RemoteEvents and RemoteFunctions.
-    Provides a centralized and type-safe way to define and handle network events,
-    improving security and maintainability. This module is placed in ReplicatedStorage.Shared
-    to be accessible by both server and client scripts.
+    Shared/NetworkManager.lua
+    Description: Centralized network event management for both client and server.
+    Handles the registration, retrieval, and management of RemoteEvents and RemoteFunctions.
+    Provides a clean API for network communication across the game.
 ]]
+
 local NetworkManager = {}
 
--- Attempt to require Logger only if running on the server.
--- On the client, ServerScriptService does not exist, so this will be nil.
-local Logger = nil
-local RunService = game:GetService("RunService")
-if RunService:IsServer() then
-    Logger = require(game.ServerScriptService.Server.Core.Logger)
-end
-
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
+local Logger = require(game.ReplicatedStorage.Shared.Logger)
 
 -- Internal tables to store references to created remotes (primarily used by server for quick lookup)
 local _remoteEvents = {}
@@ -28,20 +22,14 @@ local _remoteFunctions = {}
 ]]
 function NetworkManager.RegisterRemoteEvent(eventName)
     if _remoteEvents[eventName] then
-        if Logger then
-            Logger.Warn("NetworkManager", "RemoteEvent '%s' already registered.", eventName)
-        else
-            warn("NetworkManager: RemoteEvent '" .. eventName .. "' already registered.")
-        end
+        Logger.Warn("NetworkManager", "RemoteEvent '%s' already registered.", eventName)
         return
     end
     local remoteEvent = Instance.new("RemoteEvent")
     remoteEvent.Name = eventName
     remoteEvent.Parent = ReplicatedStorage -- Or a dedicated "Remotes" folder
     _remoteEvents[eventName] = remoteEvent -- Cache it internally
-    if Logger then
-        Logger.Debug("NetworkManager", "Registered RemoteEvent: %s", eventName)
-    end
+    Logger.Debug("NetworkManager", "Registered RemoteEvent: %s", eventName)
 end
 
 --[[
@@ -51,20 +39,14 @@ end
 ]]
 function NetworkManager.RegisterRemoteFunction(functionName)
     if _remoteFunctions[functionName] then
-        if Logger then
-            Logger.Warn("NetworkManager", "RemoteFunction '%s' already registered.", functionName)
-        else
-            warn("NetworkManager: RemoteFunction '" .. functionName .. "' already registered.")
-        end
+        Logger.Warn("NetworkManager", "RemoteFunction '%s' already registered.", functionName)
         return
     end
     local remoteFunction = Instance.new("RemoteFunction")
     remoteFunction.Name = functionName
     remoteFunction.Parent = ReplicatedStorage -- Or a dedicated "Remotes" folder
     _remoteFunctions[functionName] = remoteFunction -- Cache it internally
-    if Logger then
-        Logger.Debug("NetworkManager", "Registered RemoteFunction: %s", functionName)
-    end
+    Logger.Debug("NetworkManager", "Registered RemoteFunction: %s", functionName)
 end
 
 --[[
@@ -108,8 +90,9 @@ function NetworkManager.GetRemoteFunction(functionName)
         if replicatedFunction and replicatedFunction:IsA("RemoteFunction") then
             return replicatedFunction
         else
-            -- Use error() on client if it fails to ensure developer sees it
-            error("NetworkManager: Client: Timed out or failed to get RemoteFunction: " .. functionName)
+            -- Return nil instead of error to allow retry logic
+            warn("NetworkManager: Client: Timed out or failed to get RemoteFunction: " .. functionName)
+            return nil
         end
     else -- On server
         local func = _remoteFunctions[functionName]

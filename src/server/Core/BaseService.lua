@@ -6,7 +6,7 @@
     Encourages modularity and clear responsibilities.
 ]]
 local BaseService = {}
-local Logger = require(script.Parent.Logger) -- Logger is in the same Core folder
+local Logger = require(game.ReplicatedStorage.Shared.Logger) -- Logger is now shared
 
 BaseService.__index = BaseService
 

@@ -26,9 +26,13 @@ Constants.DEFAULT_LOG_LEVEL = Constants.LOG_LEVEL.DEBUG
 
 -- Network event names (example)
 Constants.NETWORK_EVENTS = {
-    CLIENT_REQUEST_BUILD = "ClientRequestBuild",
     SERVER_NOTIFY_HEALTH_UPDATE = "ServerNotifyHealthUpdate",
     CLIENT_REQUEST_INTERACT = "ClientRequestInteract",
+}
+
+-- RemoteFunction names (separate from RemoteEvents)
+Constants.REMOTE_FUNCTIONS = {
+    CLIENT_REQUEST_BUILD = "ClientRequestBuild",
 }
 
 -- DataStore keys (example)
