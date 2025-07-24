@@ -45,9 +45,12 @@ function BuildingSystem:Init()
     end
 
     -- NEW: Generate basic part models for each structure type
-    for _, structureType in ipairs(Constants.STRUCTURE_TYPES) do
+    Logger.Debug(self:GetServiceName(), "Starting to generate models for structure types")
+    for key, structureType in pairs(Constants.STRUCTURE_TYPES) do
+        Logger.Debug(self:GetServiceName(), "Processing structure type: %s (key: %s)", structureType, key)
         local partProperties = Constants.BUILDING_PART_DEFAULTS[structureType]
         if partProperties then
+            Logger.Debug(self:GetServiceName(), "Creating model for %s with properties: %s", structureType, tostring(partProperties.Size))
             local part = Instance.new("Part")
             part.Name = structureType
             part.Size = partProperties.Size
@@ -57,19 +60,20 @@ function BuildingSystem:Init()
             part.CanCollide = true
             part.Transparency = 0.5 -- Make them slightly transparent for now, easier to see placement
             part.CFrame = CFrame.new(0, -10000, 0) -- Move far away initially
-            part.Parent = ReplicatedStorage -- Store in ReplicatedStorage for client previewing and server cloning
 
             local model = Instance.new("Model")
             model.Name = structureType
             part.Parent = model
             model.PrimaryPart = part -- Set PrimaryPart for CFrame manipulation
+            model.Parent = ReplicatedStorage -- Store in ReplicatedStorage for client previewing and server cloning
 
             _structureModels[structureType] = model
-            Logger.Debug(self:GetServiceName(), "Generated basic part model for: %s", structureType)
+            Logger.Debug(self:GetServiceName(), "Successfully created and stored model for: %s in ReplicatedStorage", structureType)
         else
             Logger.Warn(self:GetServiceName(), "Missing default properties for structure type: %s", structureType)
         end
     end
+    Logger.Debug(self:GetServiceName(), "Finished generating models. Total models in _structureModels: %d", #_structureModels)
     -- REMOVED: ServerStorage model loading logic is no longer needed
 
     -- The RemoteFunction is now registered once in init.server.luau

@@ -30,23 +30,7 @@ local BuildingClient = require(ClientModulesPath.BuildingClient)
     @param message string: The raw chat message.
 ]]
 local function handleCommandInput(message)
-    -- Check for server commands (starting with '/')
-    if message:sub(1, 1) == "/" then
-        local commandString = message:sub(2) -- Remove the leading '/'
-        local commandName, rawArgs = commandString:match("^(%S+)%s*(.*)$")
-
-        if commandName then
-            if CommandExecuteEvent then
-                Logger.Debug("Client", "Executing command: %s with args: %s", commandName, rawArgs)
-                CommandExecuteEvent:FireServer(commandName, rawArgs)
-                return true -- Message was a server command, consume it
-            else
-                Logger.Warn("Client", "CommandExecuteEvent not available to send command. Server may not have registered it.")
-            end
-        end
-    end
-
-    -- Check for local client-side building commands (for testing)
+    -- Check for local client-side building commands first (for testing)
     local lowerMessage = message:lower()
     if lowerMessage == "/build wall" then
         Logger.Debug("Client", "Enabling building mode: Wall")
@@ -64,6 +48,22 @@ local function handleCommandInput(message)
         Logger.Debug("Client", "Disabling building mode")
         BuildingClient:DisableBuildingMode()
         return true
+    end
+
+    -- Check for server commands (starting with '/')
+    if message:sub(1, 1) == "/" then
+        local commandString = message:sub(2) -- Remove the leading '/'
+        local commandName, rawArgs = commandString:match("^(%S+)%s*(.*)$")
+
+        if commandName then
+            if CommandExecuteEvent then
+                Logger.Debug("Client", "Executing server command: %s with args: %s", commandName, rawArgs)
+                CommandExecuteEvent:FireServer(commandName, rawArgs)
+                return true -- Message was a server command, consume it
+            else
+                Logger.Warn("Client", "CommandExecuteEvent not available to send command. Server may not have registered it.")
+            end
+        end
     end
 
     return false -- Message was not a command
