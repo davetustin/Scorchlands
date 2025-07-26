@@ -215,7 +215,6 @@ function BuildingSystem:Start()
     end
     
     -- Connect player leaving event to save their structures
-    local Players = game:GetService("Players")
     Players.PlayerRemoving:Connect(function(player)
         self:OnPlayerLeaving(player)
     end)
@@ -492,11 +491,6 @@ function BuildingSystem:LoadPlayerStructures(playerId)
                 structureType, structureId)
         end
     end
-    -- Count structures properly (since savedStructures uses string keys)
-    local structureCount = 0
-    for _ in pairs(savedStructures) do
-        structureCount = structureCount + 1
-    end
     Logger.Info(self:GetServiceName(), "Loaded %d structures for player %d", 
         structureCount, playerId)
 end
@@ -655,7 +649,7 @@ function BuildingSystem:UpdateStructureVisualHealth(structureId, healthData)
         return
     end
     
-    local healthPercentage = (healthData.health / materialData.maxHealth) * 100
+    local _healthPercentage = (healthData.health / materialData.maxHealth) * 100
     local newColor = nil
     
     -- Determine color based on health thresholds from constants
@@ -777,7 +771,7 @@ end
 function BuildingSystem:SendRepairNotification(player, structureId, notificationType, structureType)
     -- TODO: Implement proper notification system
     -- For now, we'll use a simple print/log approach
-    local message = string.format("Structure %s (%s) needs repair! Health: %s", 
+    local _message = string.format("Structure %s (%s) needs repair! Health: %s", 
         structureType, structureId, notificationType)
     
     if notificationType == "CRITICAL" then
