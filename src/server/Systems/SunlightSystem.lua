@@ -22,7 +22,7 @@ setmetatable(SunlightSystem, BaseService) -- Inherit from BaseService
 -- Private variables for the service
 -- UPDATED: Use constant for default player sunlight damage state
 local _sunlightDamageEnabled = Constants.PLAYER_SUNLIGHT_DAMAGE_ENABLED_DEFAULT
-local _lastDamageTime = {} -- Stores the last time each player took damage
+local _lastDamageTime = {} -- Stores the last time each player took damage (using tick() for precision)
 
 --[[
     SunlightSystem:ManagePlayerRegen(player)
@@ -143,7 +143,7 @@ function SunlightSystem:CheckSunlightExposure()
 
             if inSunlight and _sunlightDamageEnabled then
                 local lastDamage = _lastDamageTime[player.UserId] or 0
-                local currentTime = os.time()
+                local currentTime = tick() -- Use tick() for precise timing instead of os.time()
 
                 if currentTime - lastDamage >= Constants.SUNLIGHT_DAMAGE_INTERVAL then
                     local newHealth = humanoid.Health - Constants.SUNLIGHT_DAMAGE_AMOUNT
