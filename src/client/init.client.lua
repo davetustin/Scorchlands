@@ -117,4 +117,7 @@ BuildingClient.Init()
 
 Logger.Info("Client", "Client initialization complete")
 
+-- Force flush any remaining buffered logs to ensure startup logs are displayed immediately
+Logger.FlushBuffer()
+
 -- You can add other client-side initialization here, e.g., UI setup, local effects.

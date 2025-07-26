@@ -118,32 +118,45 @@ end
     @return boolean: True if placement was successful, false otherwise.
 ]]
 function BuildingSystem:PlaceStructure(player, structureType, cframe)
-    -- 1. Basic Validation (server-side)
+    -- 1. Security: Rate limiting check
+    if not StateValidator.CheckRateLimit(player, "build_structure") then
+        Logger.Warn(self:GetServiceName(), "Rate limit exceeded for %s building %s.", player.Name, structureType)
+        return false, "Rate limit exceeded. Please wait before building again."
+    end
+
+    -- 2. Basic Validation (server-side)
     if not player then
         Logger.Warn(self:GetServiceName(), "Invalid build request: Player is nil.")
         return false, "Invalid player."
     end
-    if not _structureModels[structureType] then
+    
+    -- 3. Security: Validate structure type
+    if not StateValidator.ValidateStructureType(structureType) then
         Logger.Warn(self:GetServiceName(), "Invalid build request from %s: Unknown structure type '%s'.", player.Name, structureType)
         return false, "Invalid structure type."
     end
+    
+    if not _structureModels[structureType] then
+        Logger.Warn(self:GetServiceName(), "Structure model not found for type '%s'.", structureType)
+        return false, "Structure type not available."
+    end
+    
     if typeof(cframe) ~= "CFrame" then
         Logger.Warn(self:GetServiceName(), "Invalid build request from %s: Invalid CFrame provided (type: %s).", player.Name, typeof(cframe))
         return false, "Invalid placement CFrame."
     end
 
-    -- 2. Resource Check (placeholder)
-    -- local playerData = DataManager:LoadPlayerData(player) -- Would load current player resources
-    -- if not self:HasEnoughResources(playerData, structureType) then
-    --     self:SendFeedback(player, "Not enough resources to build " .. structureType .. ".")
-    --     return false, "Not enough resources."
-    -- end
-
-    -- 3. Placement Validation (using StateValidator)
-    -- This would involve more complex checks like collision, ground alignment, etc.
+    -- 4. Security: Enhanced placement validation
     if not StateValidator.ValidateStructurePlacement(cframe.Position, cframe) then
         Logger.Warn(self:GetServiceName(), "%s attempted invalid structure placement for %s at %s.", player.Name, structureType, tostring(cframe.Position))
         return false, "Invalid placement location."
+    end
+
+    -- 5. Security: Check player structure count limit
+    local playerStructureCount = self:GetPlayerStructureCount(player.UserId)
+    if playerStructureCount >= Constants.MAX_STRUCTURE_COUNT_PER_PLAYER then
+        Logger.Warn(self:GetServiceName(), "%s exceeded structure limit (%d).", player.Name, Constants.MAX_STRUCTURE_COUNT_PER_PLAYER)
+        return false, "Structure limit reached."
     end
 
     -- 4. Create and Place Structure
@@ -197,6 +210,23 @@ end
 --     -- Implement resource check logic here
 --     return true
 -- end
+
+--[[
+    BuildingSystem:GetPlayerStructureCount(playerId)
+    Gets the number of structures owned by a player.
+    @param playerId number: The UserId of the player.
+    @return number: The number of structures owned by the player.
+]]
+function BuildingSystem:GetPlayerStructureCount(playerId)
+    local count = 0
+    for _, structure in ipairs(_placedStructures) do
+        local ownerId = structure:FindFirstChild("OwnerId")
+        if ownerId and ownerId.Value == playerId then
+            count = count + 1
+        end
+    end
+    return count
+end
 
 -- Example helper for resource deduction (will be moved to a dedicated resource system later)
 -- function BuildingSystem:DeductResources(playerData, structureType)

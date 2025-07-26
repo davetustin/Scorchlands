@@ -8,6 +8,7 @@
 local BaseService = require(script.Parent.BaseService)
 local Logger = require(game.ReplicatedStorage.Shared.Logger)
 local Constants = require(game.ReplicatedStorage.Shared.Constants)
+local StateValidator = require(script.Parent.StateValidator)
 -- CORRECTED: NetworkManager is now in ReplicatedStorage.Shared
 local NetworkManager = require(game.ReplicatedStorage.Shared.NetworkManager)
 local ServiceRegistry = require(script.Parent.ServiceRegistry) -- To access other services for commands
@@ -148,9 +149,29 @@ end
     @param ... any: Additional arguments passed with the command.
 ]]
 function CommandSystem:ExecuteCommand(player, commandString, ...)
-    if not player or not isAdmin(player) then
+    -- Security: Validate input
+    if not player then
+        Logger.Warn(self:GetServiceName(), "Command executed with nil player")
+        return
+    end
+    
+    if not StateValidator.ValidateCommandInput(commandString) then
+        self:SendFeedback(player, "Invalid command input.")
+        Logger.Warn(self:GetServiceName(), "Invalid command input from %s: %s", player.Name, commandString)
+        return
+    end
+    
+    -- Security: Rate limiting
+    if not StateValidator.CheckRateLimit(player, "command_execution") then
+        self:SendFeedback(player, "Rate limit exceeded. Please wait before using commands again.")
+        Logger.Warn(self:GetServiceName(), "Command rate limit exceeded for %s", player.Name)
+        return
+    end
+
+    -- Security: Admin check
+    if not isAdmin(player) then
         self:SendFeedback(player, "You do not have permission to use commands.")
-        Logger.Warn(self:GetServiceName(), "Unauthorized command attempt by %s: %s", player and player.Name or "Unknown", commandString)
+        Logger.Warn(self:GetServiceName(), "Unauthorized command attempt by %s: %s", player.Name, commandString)
         return
     end
 

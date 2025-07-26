@@ -65,6 +65,7 @@ Constants.STRUCTURE_TYPES = {
     ROOF = "Roof",
 }
 Constants.MAX_STRUCTURE_HEALTH = 100 -- Default health for newly placed structures
+Constants.MAX_STRUCTURE_COUNT_PER_PLAYER = 100 -- Maximum structures per player
 
 -- Building Grid System Constants
 Constants.BUILDING_GRID = {

@@ -25,13 +25,21 @@ local _sunlightDamageEnabled = Constants.PLAYER_SUNLIGHT_DAMAGE_ENABLED_DEFAULT
 local _lastDamageTime = {} -- Stores the last time each player took damage (using tick() for precision)
 local _playerSunlightState = {} -- Tracks whether each player is currently in sunlight
 
+-- Performance optimization variables
+local _playerCache = {} -- Cache player data to avoid repeated lookups
+local _lastCacheCleanup = tick()
+local _cacheCleanupInterval = 10 -- Clean cache every 10 seconds
+local _maxCacheAge = 30 -- Remove cache entries older than 30 seconds
+local _isInitialized = false -- Track if system is fully initialized
+
 --[[
     SunlightSystem:ManagePlayerRegen(player, inSunlight)
     Manages health regeneration for a given player's humanoid based on their sunlight state.
     @param player Player: The Roblox Player object.
     @param inSunlight boolean: Whether the player is currently in sunlight.
 ]]
-local function ManagePlayerRegen(player, inSunlight)
+function SunlightSystem:ManagePlayerRegen(player, inSunlight)
+    if not self._isInitialized then return end
     local character = player.Character
     if character then
         local humanoid = character:FindFirstChildOfClass("Humanoid")
@@ -48,6 +56,7 @@ local function ManagePlayerRegen(player, inSunlight)
                 
                 defaultHealthScript.Disabled = not shouldEnableRegen
                 
+                -- Only log health regeneration changes during gameplay, not during initialization
                 if shouldEnableRegen then
                     Logger.Debug("SunlightSystem", "Enabled health regeneration for %s (%s).", player.Name, inSunlight and "in sunlight" or "in shadow")
                 else
@@ -63,6 +72,7 @@ end
 function SunlightSystem.new(serviceName)
     local self = BaseService.new(serviceName)
     setmetatable(self, SunlightSystem)
+    self._isInitialized = false
     Logger.Debug(self:GetServiceName(), "SunlightSystem instance created.")
     return self
 end
@@ -88,11 +98,11 @@ function SunlightSystem:Start()
         _playerSunlightState[player.UserId] = false
         
         player.CharacterAdded:Connect(function(character)
-            ManagePlayerRegen(player, false) -- Start in shadow
+            self:ManagePlayerRegen(player, false) -- Start in shadow
         end)
         -- Also manage for current character if it exists
         if player.Character then
-            ManagePlayerRegen(player, false) -- Start in shadow
+            self:ManagePlayerRegen(player, false) -- Start in shadow
         end
         
         -- Clean up when player leaves
@@ -110,13 +120,17 @@ function SunlightSystem:Start()
         _playerSunlightState[player.UserId] = false
         
         if player.Character then
-            ManagePlayerRegen(player, false) -- Start in shadow
+            self:ManagePlayerRegen(player, false) -- Start in shadow
         end
         -- Also connect CharacterAdded for existing players in case they respawn
         player.CharacterAdded:Connect(function(character)
-            ManagePlayerRegen(player, false) -- Start in shadow
+            self:ManagePlayerRegen(player, false) -- Start in shadow
         end)
     end
+    
+    -- Mark system as initialized after startup is complete
+    self._isInitialized = true
+    Logger.FlushBuffer()
 end
 
 function SunlightSystem:Stop()
@@ -139,57 +153,90 @@ end
     Iterates through all players and checks if they are exposed to direct sunlight.
     Applies damage if exposed and damage is enabled.
 ]]
+--[[
+    SunlightSystem:CleanupPlayerCache()
+    Cleans up old player cache entries to prevent memory leaks.
+]]
+local function CleanupPlayerCache()
+    local currentTime = tick()
+    for playerId, cacheData in pairs(_playerCache) do
+        if currentTime - cacheData.lastAccess > _maxCacheAge then
+            _playerCache[playerId] = nil
+        end
+    end
+end
+
 function SunlightSystem:CheckSunlightExposure()
-    local sunDirection = Workspace.CurrentCamera.CFrame.LookVector -- Simulating sun direction from camera for now, can be replaced by actual sun object later
-    -- A more robust sun direction would come from a global light source or a dedicated sun part.
-    -- For example: local sunPart = Workspace:FindFirstChild("SunPart")
-    -- if sunPart then sunDirection = (sunPart.Position - Vector3.new(0,0,0)).Unit end
+    local currentTime = tick()
+    
+    -- Periodic cache cleanup
+    if currentTime - _lastCacheCleanup > _cacheCleanupInterval then
+        CleanupPlayerCache()
+        _lastCacheCleanup = currentTime
+    end
+
+    -- Cache sun direction calculation
+    local sunDirection = Workspace.CurrentCamera.CFrame.LookVector
+    local rayDirection = -sunDirection * 1000
 
     for _, player in ipairs(Players:GetPlayers()) do
-        local character = player.Character
-        local humanoid = character and character:FindFirstChildOfClass("Humanoid")
-        local rootPart = character and character:FindFirstChild("HumanoidRootPart")
+        local playerId = player.UserId
+        
+        -- Use cached player data if available
+        local cachedData = _playerCache[playerId]
+        local character, humanoid, rootPart
+        
+        if cachedData and cachedData.lastAccess > currentTime - 0.1 then -- Cache valid for 0.1 seconds
+            character = cachedData.character
+            humanoid = cachedData.humanoid
+            rootPart = cachedData.rootPart
+        else
+            -- Update cache
+            character = player.Character
+            humanoid = character and character:FindFirstChildOfClass("Humanoid")
+            rootPart = character and character:FindFirstChild("HumanoidRootPart")
+            
+            _playerCache[playerId] = {
+                character = character,
+                humanoid = humanoid,
+                rootPart = rootPart,
+                lastAccess = currentTime
+            }
+        end
 
         if humanoid and humanoid.Health > 0 and rootPart then
             local rayOrigin = rootPart.Position
-            -- Cast ray slightly above the head to ensure it hits the top of the character
-            local rayDirection = -sunDirection * 1000 -- Ray goes from player towards the sun
+            
+            -- Optimize raycast parameters (reuse where possible)
             local rayParams = RaycastParams.new()
             rayParams.FilterType = Enum.RaycastFilterType.Exclude
-            rayParams.FilterDescendantsInstances = {character} -- Exclude the player's own character
+            rayParams.FilterDescendantsInstances = {character}
             rayParams.IgnoreWater = true
 
             local raycastResult = Workspace:Raycast(rayOrigin, rayDirection, rayParams)
-
-            -- If raycastResult is nil, it means the ray went through everything to the sky,
-            -- implying direct sunlight. If it hit something, the player is in shadow.
             local inSunlight = raycastResult == nil
             
             -- Check if player's sunlight state has changed
-            local previousSunlightState = _playerSunlightState[player.UserId]
+            local previousSunlightState = _playerSunlightState[playerId]
             if previousSunlightState ~= inSunlight then
-                -- State changed, update regeneration
-                ManagePlayerRegen(player, inSunlight)
-                _playerSunlightState[player.UserId] = inSunlight
+                self:ManagePlayerRegen(player, inSunlight)
+                _playerSunlightState[playerId] = inSunlight
             end
 
             if inSunlight and _sunlightDamageEnabled then
-                local lastDamage = _lastDamageTime[player.UserId] or 0
-                local currentTime = tick() -- Use tick() for precise timing instead of os.time()
+                local lastDamage = _lastDamageTime[playerId] or 0
 
                 if currentTime - lastDamage >= Constants.SUNLIGHT_DAMAGE_INTERVAL then
                     local newHealth = humanoid.Health - Constants.SUNLIGHT_DAMAGE_AMOUNT
-                    -- Validate health before applying to prevent invalid states
+                    
                     if StateValidator.ValidatePlayerHealth(newHealth) then
                         humanoid.Health = newHealth
-                        -- Removed excessive logging for each damage tick
-                        _lastDamageTime[player.UserId] = currentTime
+                        _lastDamageTime[playerId] = currentTime
                     else
-                        -- If validation fails, log a warning but still try to set to 0 if it went below
                         humanoid.Health = math.max(0, newHealth)
                         Logger.Warn(self:GetServiceName(), "Attempted to set invalid health for %s. Clamped to %d. Original: %d",
                             player.Name, humanoid.Health, newHealth)
-                        _lastDamageTime[player.UserId] = currentTime
+                        _lastDamageTime[playerId] = currentTime
                     end
                 end
             end

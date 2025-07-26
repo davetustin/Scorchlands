@@ -74,6 +74,10 @@ GlobalRegistry.Set("NetworkManager", NetworkManager) -- NetworkManager's methods
 
 Logger.Info("init.server", "All core services initialized and started.")
 Logger.Info("init.server", "Server is now running and ready for game logic.")
+
+-- Force flush any remaining buffered logs to ensure startup logs are displayed immediately
+Logger.FlushBuffer()
+
 print("=== SERVER STARTUP COMPLETE ===")
 
 -- Keep the server running
