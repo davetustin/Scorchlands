@@ -598,9 +598,9 @@ function BuildingSystem:CheckSunlightExposure(deltaTime)
     end
     _lastSunlightCheck = currentTime
     
-    -- Get sun direction for raycasting
-    local sunDirection = Workspace.CurrentCamera.CFrame.LookVector
-    local rayDirection = -sunDirection * 1000
+            -- Get sun direction for raycasting (fixed direction)
+        local sunDirection = Vector3.new(0.7, -0.7, 0.7).Unit -- Normalized direction
+        local rayDirection = -sunDirection * 1000
     
     -- Use building-specific sunlight damage toggle (separate from player damage)
     for structureId, healthData in pairs(_structureHealthData) do

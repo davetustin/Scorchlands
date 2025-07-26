@@ -266,8 +266,9 @@ function SunlightSystem:CheckSunlightExposure()
         _lastCacheCleanup = currentTime
     end
 
-    -- Cache sun direction calculation
-    local sunDirection = Workspace.CurrentCamera.CFrame.LookVector
+    -- Use a fixed sun direction (pointing downward at an angle)
+    -- This simulates sunlight coming from above at roughly 45 degrees
+    local sunDirection = Vector3.new(0.7, -0.7, 0.7).Unit -- Normalized direction
     local rayDirection = -sunDirection * 1000
 
     for _, player in ipairs(Players:GetPlayers()) do
