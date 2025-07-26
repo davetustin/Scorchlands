@@ -48,6 +48,32 @@ print("Registering CLIENT_REQUEST_BUILD RemoteFunction...")
 NetworkManager.RegisterRemoteFunction(Constants.REMOTE_FUNCTIONS.CLIENT_REQUEST_BUILD)
 print("✓ Registered CLIENT_REQUEST_BUILD RemoteFunction")
 
+print("Registering CLIENT_REQUEST_REPAIR RemoteFunction...")
+NetworkManager.RegisterRemoteFunction(Constants.REMOTE_FUNCTIONS.CLIENT_REQUEST_REPAIR)
+print("✓ Registered CLIENT_REQUEST_REPAIR RemoteFunction")
+
+-- Make some core modules globally accessible via GlobalRegistry if needed
+-- This is an alternative to direct 'require' calls if you want a central lookup.
+-- NOTE: This must happen BEFORE services are started so they can access these modules
+GlobalRegistry.Set("Logger", Logger)
+GlobalRegistry.Set("Constants", Constants)
+
+-- Create and register DataManager instance with debugging
+local dataManagerInstance = DataManager.new()
+print("✓ DataManager instance created")
+print("✓ DataManager type: " .. typeof(dataManagerInstance))
+print("✓ DataManager LoadStructureData method: " .. tostring(dataManagerInstance.LoadStructureData))
+
+GlobalRegistry.Set("DataManager", dataManagerInstance)
+GlobalRegistry.Set("NetworkManager", NetworkManager) -- NetworkManager's methods are static for now
+
+-- Register services in GlobalRegistry for cross-service communication
+-- Note: These will be populated after services are started
+GlobalRegistry.Set("SunlightSystem", nil) -- Will be set after service creation
+GlobalRegistry.Set("BuildingSystem", nil) -- Will be set after service creation
+
+print("✓ Global modules registered")
+
 -- Register all core services with the ServiceRegistry
 print("Registering services...")
 ServiceRegistry.RegisterService("SunlightSystem", SunlightSystem)
@@ -65,12 +91,7 @@ print("Starting services...")
 ServiceRegistry.StartAll()
 print("✓ All services started")
 
--- Make some core modules globally accessible via GlobalRegistry if needed
--- This is an alternative to direct 'require' calls if you want a central lookup.
-GlobalRegistry.Set("Logger", Logger)
-GlobalRegistry.Set("Constants", Constants)
-GlobalRegistry.Set("DataManager", DataManager.new()) -- Create an instance if it's not a service
-GlobalRegistry.Set("NetworkManager", NetworkManager) -- NetworkManager's methods are static for now
+
 
 Logger.Info("init.server", "All core services initialized and started.")
 Logger.Info("init.server", "Server is now running and ready for game logic.")

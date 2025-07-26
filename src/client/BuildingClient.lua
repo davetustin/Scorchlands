@@ -27,8 +27,13 @@ local _currentPreviewPrimaryPart = nil
 local _gridSize = Constants.BUILDING_GRID.GRID_SIZE -- Grid size for all structures
 local _currentRotation = 0 -- 0, 90, 180, 270 degrees
 
+-- Private variables for repair mode
+local _isRepairMode = false
+local _repairTarget = nil -- The structure being targeted for repair
+
 -- REMOVED: Get RemoteFunction here. It will be retrieved in Init()
 local ClientRequestBuild = nil
+local ClientRequestRepair = nil
 
 --[[
     BuildingClient:EnableBuildingMode(structureType)
@@ -86,6 +91,99 @@ function BuildingClient:DisableBuildingMode()
     end
 
     Logger.Debug("BuildingClient", "Building mode DISABLED.")
+end
+
+--[[
+    BuildingClient:EnableRepairMode()
+    Enables repair mode, allowing players to repair their structures.
+]]
+function BuildingClient:EnableRepairMode()
+    if _isBuildingMode then
+        self:DisableBuildingMode() -- Disable building mode if active
+    end
+    
+    _isRepairMode = true
+    _repairTarget = nil
+    
+    Logger.Debug("BuildingClient", "Repair mode ENABLED.")
+end
+
+--[[
+    BuildingClient:DisableRepairMode()
+    Disables repair mode.
+]]
+function BuildingClient:DisableRepairMode()
+    _isRepairMode = false
+    _repairTarget = nil
+    
+    Logger.Debug("BuildingClient", "Repair mode DISABLED.")
+end
+
+--[[
+    BuildingClient:ToggleRepairMode()
+    Toggles repair mode on/off.
+]]
+function BuildingClient:ToggleRepairMode()
+    if _isRepairMode then
+        self:DisableRepairMode()
+    else
+        self:EnableRepairMode()
+    end
+end
+
+--[[
+    BuildingClient:GetStructureUnderMouse()
+    Gets the structure under the mouse cursor for repair targeting.
+    @return Model|nil: The structure model or nil if none found.
+]]
+function BuildingClient:GetStructureUnderMouse()
+    local mousePos = PlayerMouse.Hit.Position
+    
+    local structuresFolder = Workspace:FindFirstChild("Structures")
+    if not structuresFolder then
+        return nil
+    end
+    
+    -- Find the closest structure to the mouse
+    local closestStructure = nil
+    local closestDistance = math.huge
+    
+    for _, structure in ipairs(structuresFolder:GetChildren()) do
+        if structure:IsA("Model") then
+            local primaryPart = structure.PrimaryPart
+            if primaryPart then
+                local distance = (primaryPart.Position - mousePos).Magnitude
+                if distance < closestDistance and distance < 10 then -- Within 10 studs
+                    closestStructure = structure
+                    closestDistance = distance
+                end
+            end
+        end
+    end
+    
+    return closestStructure
+end
+
+--[[
+    BuildingClient:RepairStructure(structureId)
+    Sends a repair request to the server for a specific structure.
+    @param structureId string: The ID of the structure to repair.
+    @return boolean: True if repair request was sent successfully.
+]]
+function BuildingClient:RepairStructure(structureId)
+    if not ClientRequestRepair then
+        Logger.Warn("BuildingClient", "ClientRequestRepair RemoteFunction not available.")
+        return false
+    end
+    
+    local success, message = ClientRequestRepair:InvokeServer(structureId)
+    if success then
+        Logger.Debug("BuildingClient", "Successfully sent repair request for structure %s", structureId)
+        return true
+    else
+        Logger.Warn("BuildingClient", "Failed to repair structure %s: %s", structureId, message)
+        return false
+    end
 end
 
 --[[
@@ -220,20 +318,42 @@ function BuildingClient:HandleInput(input, gameProcessedEvent)
         elseif input.KeyCode == Enum.KeyCode.Q then -- Q to disable building mode
             self:DisableBuildingMode()
         end
+    elseif _isRepairMode then
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then -- Left click to repair
+            local targetStructure = self:GetStructureUnderMouse()
+            if targetStructure then
+                self:RepairStructure(targetStructure.Name)
+            else
+                Logger.Debug("BuildingClient", "No structure found under mouse for repair.")
+            end
+        elseif input.KeyCode == Enum.KeyCode.Q then -- Q to disable repair mode
+            self:DisableRepairMode()
+        end
+    end
+    
+    -- Global key bindings
+    if input.KeyCode == Enum.KeyCode.E then -- E key to toggle repair mode
+        self:ToggleRepairMode()
     end
 end
 
 -- Initialize the client-side building system
 function BuildingClient.Init()
-    -- NEW: Get the RemoteFunction with retry mechanism to handle timing issues
+    -- NEW: Get the RemoteFunctions with retry mechanism to handle timing issues
     local maxRetries = 10
     local retryCount = 0
     
-    while not ClientRequestBuild and retryCount < maxRetries do
-        ClientRequestBuild = NetworkManager.GetRemoteFunction(Constants.REMOTE_FUNCTIONS.CLIENT_REQUEST_BUILD)
+    while (not ClientRequestBuild or not ClientRequestRepair) and retryCount < maxRetries do
         if not ClientRequestBuild then
+            ClientRequestBuild = NetworkManager.GetRemoteFunction(Constants.REMOTE_FUNCTIONS.CLIENT_REQUEST_BUILD)
+        end
+        if not ClientRequestRepair then
+            ClientRequestRepair = NetworkManager.GetRemoteFunction(Constants.REMOTE_FUNCTIONS.CLIENT_REQUEST_REPAIR)
+        end
+        
+        if not ClientRequestBuild or not ClientRequestRepair then
             retryCount = retryCount + 1
-            Logger.Debug("BuildingClient", "Attempt %d to get ClientRequestBuild RemoteFunction...", retryCount)
+            Logger.Debug("BuildingClient", "Attempt %d to get RemoteFunctions...", retryCount)
             task.wait(0.5) -- Wait 0.5 seconds before retrying
         end
     end
@@ -242,6 +362,12 @@ function BuildingClient.Init()
         Logger.Error("BuildingClient", "Failed to get ClientRequestBuild RemoteFunction after %d attempts.", maxRetries)
     else
         Logger.Debug("BuildingClient", "Successfully obtained ClientRequestBuild RemoteFunction.")
+    end
+    
+    if not ClientRequestRepair then
+        Logger.Error("BuildingClient", "Failed to get ClientRequestRepair RemoteFunction after %d attempts.", maxRetries)
+    else
+        Logger.Debug("BuildingClient", "Successfully obtained ClientRequestRepair RemoteFunction.")
     end
 
     -- Connect Heartbeat to update preview position

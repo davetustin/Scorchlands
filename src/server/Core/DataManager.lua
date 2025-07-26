@@ -16,6 +16,17 @@ local DataStoreService = game:GetService("DataStoreService")
 function DataManager.new()
     local self = setmetatable({}, DataManager)
     Logger.Debug("DataManager", "DataManager instance created.")
+    
+    -- Explicitly copy methods to ensure they're available on the instance
+    self.LoadPlayerData = DataManager.LoadPlayerData
+    self.SavePlayerData = DataManager.SavePlayerData
+    self.LoadStructureData = DataManager.LoadStructureData
+    self.SaveStructureData = DataManager.SaveStructureData
+    
+    -- Debug: Verify that methods are properly attached
+    Logger.Debug("DataManager", "LoadStructureData method exists: %s", tostring(self.LoadStructureData))
+    Logger.Debug("DataManager", "SaveStructureData method exists: %s", tostring(self.SaveStructureData))
+    
     return self
 end
 
@@ -95,5 +106,52 @@ end
 -- Add methods for BaseData, GlobalSettings, etc. as needed.
 -- DataManager:LoadBaseData(baseId)
 -- DataManager:SaveBaseData(baseId, data)
+
+--[[
+    DataManager:LoadStructureData(playerId)
+    Loads structure data for a player from the DataStore.
+    @param playerId number: The UserId of the player.
+    @return table: The structure data, or an empty table if not found.
+]]
+function DataManager:LoadStructureData(playerId)
+    local success, data = pcall(function()
+        local structureDataStore = DataStoreService:GetDataStore(Constants.DATA_STORE_KEYS.STRUCTURE_DATA .. playerId)
+        return structureDataStore:GetAsync("structures")
+    end)
+
+    if success then
+        if data then
+            Logger.Info("DataManager", "Loaded structure data for player %d.", playerId)
+            return data
+        else
+            Logger.Info("DataManager", "No existing structure data for player %d. Returning empty table.", playerId)
+            return {}
+        end
+    else
+        Logger.Error("DataManager", "Failed to load structure data for player %d: %s", playerId, data)
+        return {}
+    end
+end
+
+--[[
+    DataManager:SaveStructureData(playerId, structureData)
+    Saves structure data for a player to the DataStore.
+    @param playerId number: The UserId of the player.
+    @param structureData table: The structure data to save.
+    @return boolean: True if save was successful, false otherwise.
+]]
+function DataManager:SaveStructureData(playerId, structureData)
+    local success, err = pcall(function()
+        local structureDataStore = DataStoreService:GetDataStore(Constants.DATA_STORE_KEYS.STRUCTURE_DATA .. playerId)
+        structureDataStore:SetAsync("structures", structureData)
+    end)
+
+    if success then
+        Logger.Info("DataManager", "Saved structure data for player %d.", playerId)
+    else
+        Logger.Error("DataManager", "Failed to save structure data for player %d: %s", playerId, err)
+    end
+    return success
+end
 
 return DataManager

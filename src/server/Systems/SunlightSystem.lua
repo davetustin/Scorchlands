@@ -24,6 +24,7 @@ setmetatable(SunlightSystem, BaseService) -- Inherit from BaseService
 local _sunlightDamageEnabled = Constants.PLAYER_SUNLIGHT_DAMAGE_ENABLED_DEFAULT
 local _lastDamageTime = {} -- Stores the last time each player took damage (using tick() for precision)
 local _playerSunlightState = {} -- Tracks whether each player is currently in sunlight
+local _sunIcons = {} -- Tracks sun icon instances for each player
 
 -- Performance optimization variables
 local _playerCache = {} -- Cache player data to avoid repeated lookups
@@ -31,6 +32,87 @@ local _lastCacheCleanup = tick()
 local _cacheCleanupInterval = 10 -- Clean cache every 10 seconds
 local _maxCacheAge = 30 -- Remove cache entries older than 30 seconds
 local _isInitialized = false -- Track if system is fully initialized
+
+--[[
+    SunlightSystem:CreateSunIcon(player)
+    Creates a sun icon above the player's head.
+    @param player Player: The Roblox Player object.
+    @return BillboardGui: The sun icon BillboardGui.
+]]
+function SunlightSystem:CreateSunIcon(player)
+    local character = player.Character
+    if not character then return nil end
+    
+    local humanoidRootPart = character:FindFirstChild("HumanoidRootPart")
+    if not humanoidRootPart then return nil end
+    
+    -- Create BillboardGui for the sun icon
+    local billboardGui = Instance.new("BillboardGui")
+    billboardGui.Name = "SunIcon"
+    billboardGui.Size = UDim2.new(0, 20, 0, 20) -- Smaller size
+    billboardGui.StudsOffset = Vector3.new(0, 4.5, 0) -- Higher above head
+    billboardGui.Adornee = humanoidRootPart
+    billboardGui.AlwaysOnTop = true
+    billboardGui.LightInfluence = 0 -- Don't be affected by lighting
+    billboardGui.MaxDistance = 100 -- Optional: hide at extreme distance
+    billboardGui.ClipsDescendants = false
+    billboardGui.ResetOnSpawn = false
+    billboardGui.Parent = humanoidRootPart
+    
+    -- Create the sun icon (using a simple circle for now)
+    local sunIcon = Instance.new("Frame")
+    sunIcon.Name = "Icon"
+    sunIcon.Size = UDim2.new(1, 0, 1, 0)
+    sunIcon.BackgroundColor3 = Color3.fromRGB(255, 255, 0) -- Yellow
+    sunIcon.BorderSizePixel = 0
+    sunIcon.Parent = billboardGui
+    
+    -- Make it circular
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0.5, 0)
+    corner.Parent = sunIcon
+    
+    -- Add a subtle glow effect
+    local stroke = Instance.new("UIStroke")
+    stroke.Color = Color3.fromRGB(255, 255, 100) -- Light yellow
+    stroke.Thickness = 2
+    stroke.Parent = sunIcon
+    
+    return billboardGui
+end
+
+--[[
+    SunlightSystem:ShowSunIcon(player)
+    Shows the sun icon above the player's head.
+    @param player Player: The Roblox Player object.
+]]
+function SunlightSystem:ShowSunIcon(player)
+    local playerId = player.UserId
+    
+    -- Remove existing sun icon if it exists
+    self:HideSunIcon(player)
+    
+    -- Create and show new sun icon
+    local sunIcon = self:CreateSunIcon(player)
+    if sunIcon then
+        _sunIcons[playerId] = sunIcon
+    end
+end
+
+--[[
+    SunlightSystem:HideSunIcon(player)
+    Hides the sun icon above the player's head.
+    @param player Player: The Roblox Player object.
+]]
+function SunlightSystem:HideSunIcon(player)
+    local playerId = player.UserId
+    local existingIcon = _sunIcons[playerId]
+    
+    if existingIcon then
+        existingIcon:Destroy()
+        _sunIcons[playerId] = nil
+    end
+end
 
 --[[
     SunlightSystem:ManagePlayerRegen(player, inSunlight)
@@ -55,13 +137,7 @@ function SunlightSystem:ManagePlayerRegen(player, inSunlight)
                 end
                 
                 defaultHealthScript.Disabled = not shouldEnableRegen
-                
-                -- Only log health regeneration changes during gameplay, not during initialization
-                if shouldEnableRegen then
-                    Logger.Debug("SunlightSystem", "Enabled health regeneration for %s (%s).", player.Name, inSunlight and "in sunlight" or "in shadow")
-                else
-                    Logger.Debug("SunlightSystem", "Disabled health regeneration for %s (%s).", player.Name, inSunlight and "in sunlight" or "in shadow")
-                end
+                -- Removed debug logs for enabling/disabling health regeneration
             else
                 Logger.Warn("SunlightSystem", "Could not find default health script for %s. Regeneration might persist.", player.Name)
             end
@@ -84,7 +160,12 @@ end
 
 function SunlightSystem:Start()
     BaseService.Start(self) -- Call parent Start
-    Logger.Info(self:GetServiceName(), "SunlightSystem started. Sunlight damage is currently %s.",
+    
+    -- Register this service in GlobalRegistry for cross-service communication
+    local GlobalRegistry = require(game.ServerScriptService.Server.Core.GlobalRegistry)
+    GlobalRegistry.Set("SunlightSystem", self)
+    
+    Logger.Info(self:GetServiceName(), "SunlightSystem started. Player sunlight damage is currently %s.",
         _sunlightDamageEnabled and "ENABLED" or "DISABLED")
 
     -- Connect to Heartbeat for continuous sunlight checks
@@ -110,6 +191,7 @@ function SunlightSystem:Start()
             if not parent then
                 _playerSunlightState[player.UserId] = nil
                 _lastDamageTime[player.UserId] = nil
+                self:HideSunIcon(player) -- Clean up sun icon
             end
         end)
     end)
@@ -143,6 +225,15 @@ function SunlightSystem:Stop()
         self._playerAddedConnection:Disconnect()
         self._playerAddedConnection = nil
     end
+    
+    -- Clean up all sun icons
+    for playerId, sunIcon in pairs(_sunIcons) do
+        if sunIcon then
+            sunIcon:Destroy()
+        end
+    end
+    _sunIcons = {}
+    
     -- Disconnect CharacterAdded connections for individual players (more complex to track,
     -- but for a clean shutdown, you'd iterate through players and disconnect their specific connections)
     Logger.Info(self:GetServiceName(), "SunlightSystem stopped.")
@@ -221,6 +312,13 @@ function SunlightSystem:CheckSunlightExposure()
             if previousSunlightState ~= inSunlight then
                 self:ManagePlayerRegen(player, inSunlight)
                 _playerSunlightState[playerId] = inSunlight
+                
+                -- Show/hide sun icon based on sunlight state
+                if inSunlight then
+                    self:ShowSunIcon(player)
+                else
+                    self:HideSunIcon(player)
+                end
             end
 
             if inSunlight and _sunlightDamageEnabled then

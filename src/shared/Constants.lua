@@ -33,12 +33,14 @@ Constants.NETWORK_EVENTS = {
 -- RemoteFunction names (separate from RemoteEvents)
 Constants.REMOTE_FUNCTIONS = {
     CLIENT_REQUEST_BUILD = "ClientRequestBuild",
+    CLIENT_REQUEST_REPAIR = "ClientRequestRepair",
 }
 
 -- DataStore keys (example)
 Constants.DATA_STORE_KEYS = {
     PLAYER_DATA = "PlayerData_",
     BASE_DATA = "BaseData_",
+    STRUCTURE_DATA = "StructureData_",
     GLOBAL_SETTINGS = "GlobalSettings",
 }
 
@@ -47,6 +49,33 @@ Constants.SUNLIGHT_DAMAGE_INTERVAL = 1.0 -- seconds
 Constants.SUNLIGHT_DAMAGE_AMOUNT = 5 -- health points per interval
 Constants.STRUCTURE_DEGRADATION_RATE = 0.01 -- percentage per second
 Constants.MAX_HEALTH = 100
+
+-- Structure Health System Constants
+Constants.STRUCTURE_HEALTH = {
+    -- Material types and their properties
+    MATERIALS = {
+        WOOD = {
+            name = "Wood",
+            maxHealth = 100,
+            sunlightDamageRate = 1, -- damage per second when exposed to sunlight
+            repairCost = 1, -- placeholder for future material system
+        },
+        -- Future materials can be added here:
+        -- STONE = { name = "Stone", maxHealth = 200, sunlightDamageRate = 1, repairCost = 2 },
+        -- METAL = { name = "Metal", maxHealth = 300, sunlightDamageRate = 0.5, repairCost = 3 },
+    },
+    
+    -- Health check intervals
+    HEALTH_CHECK_INTERVAL = 1.0, -- seconds between health checks
+    SUNLIGHT_CHECK_INTERVAL = 1.0, -- seconds between sunlight exposure checks
+    
+    -- Repair notification thresholds
+    REPAIR_WARNING_THRESHOLD = 50, -- Show warning when health drops below this
+    CRITICAL_HEALTH_THRESHOLD = 20, -- Show critical warning when health drops below this
+    
+    -- Default material for new structures
+    DEFAULT_MATERIAL = "WOOD",
+}
 
 -- Sunlight damage toggles
 Constants.PLAYER_SUNLIGHT_DAMAGE_ENABLED_DEFAULT = false -- Set to false as requested
