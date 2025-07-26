@@ -52,8 +52,11 @@ Constants.MAX_HEALTH = 100
 Constants.PLAYER_SUNLIGHT_DAMAGE_ENABLED_DEFAULT = false -- Set to false as requested
 Constants.BUILDING_SUNLIGHT_DAMAGE_ENABLED_DEFAULT = true -- Default to true for buildings
 
--- Player Health Regeneration toggle
-Constants.PLAYER_HEALTH_REGEN_ENABLED_DEFAULT = false -- Set to false by default as requested
+-- Player Health Regeneration toggles (separate controls for sunlight and shadow)
+Constants.PLAYER_HEALTH_REGEN = {
+    ENABLED_IN_SUNLIGHT = false, -- Health regeneration when player is in sunlight
+    ENABLED_IN_SHADOW = true,    -- Health regeneration when player is in shadow
+}
 
 -- Building System Constants
 Constants.STRUCTURE_TYPES = {

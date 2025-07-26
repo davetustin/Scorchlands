@@ -23,25 +23,35 @@ setmetatable(SunlightSystem, BaseService) -- Inherit from BaseService
 -- UPDATED: Use constant for default player sunlight damage state
 local _sunlightDamageEnabled = Constants.PLAYER_SUNLIGHT_DAMAGE_ENABLED_DEFAULT
 local _lastDamageTime = {} -- Stores the last time each player took damage (using tick() for precision)
+local _playerSunlightState = {} -- Tracks whether each player is currently in sunlight
 
 --[[
-    SunlightSystem:ManagePlayerRegen(player)
-    Manages health regeneration for a given player's humanoid based on Constants.PLAYER_HEALTH_REGEN_ENABLED_DEFAULT.
+    SunlightSystem:ManagePlayerRegen(player, inSunlight)
+    Manages health regeneration for a given player's humanoid based on their sunlight state.
     @param player Player: The Roblox Player object.
+    @param inSunlight boolean: Whether the player is currently in sunlight.
 ]]
-local function ManagePlayerRegen(player)
+local function ManagePlayerRegen(player, inSunlight)
     local character = player.Character
     if character then
         local humanoid = character:FindFirstChildOfClass("Humanoid")
         if humanoid then
             local defaultHealthScript = character:FindFirstChild("Health")
             if defaultHealthScript and defaultHealthScript:IsA("Script") then
-                -- NEW: Set Disabled state based on Constants.PLAYER_HEALTH_REGEN_ENABLED_DEFAULT
-                defaultHealthScript.Disabled = not Constants.PLAYER_HEALTH_REGEN_ENABLED_DEFAULT
-                if Constants.PLAYER_HEALTH_REGEN_ENABLED_DEFAULT then
-                    Logger.Debug("SunlightSystem", "Enabled default health script for %s.", player.Name)
+                -- Determine regeneration state based on sunlight state and constants
+                local shouldEnableRegen
+                if inSunlight then
+                    shouldEnableRegen = Constants.PLAYER_HEALTH_REGEN.ENABLED_IN_SUNLIGHT
                 else
-                    Logger.Debug("SunlightSystem", "Disabled default health script for %s.", player.Name)
+                    shouldEnableRegen = Constants.PLAYER_HEALTH_REGEN.ENABLED_IN_SHADOW
+                end
+                
+                defaultHealthScript.Disabled = not shouldEnableRegen
+                
+                if shouldEnableRegen then
+                    Logger.Debug("SunlightSystem", "Enabled health regeneration for %s (%s).", player.Name, inSunlight and "in sunlight" or "in shadow")
+                else
+                    Logger.Debug("SunlightSystem", "Disabled health regeneration for %s (%s).", player.Name, inSunlight and "in sunlight" or "in shadow")
                 end
             else
                 Logger.Warn("SunlightSystem", "Could not find default health script for %s. Regeneration might persist.", player.Name)
@@ -74,23 +84,37 @@ function SunlightSystem:Start()
 
     -- NEW: Manage regen for players who join after the system starts
     self._playerAddedConnection = Players.PlayerAdded:Connect(function(player)
+        -- Initialize player state as in shadow (safe default)
+        _playerSunlightState[player.UserId] = false
+        
         player.CharacterAdded:Connect(function(character)
-            ManagePlayerRegen(player)
+            ManagePlayerRegen(player, false) -- Start in shadow
         end)
         -- Also manage for current character if it exists
         if player.Character then
-            ManagePlayerRegen(player)
+            ManagePlayerRegen(player, false) -- Start in shadow
         end
+        
+        -- Clean up when player leaves
+        player.AncestryChanged:Connect(function(_, parent)
+            if not parent then
+                _playerSunlightState[player.UserId] = nil
+                _lastDamageTime[player.UserId] = nil
+            end
+        end)
     end)
 
     -- NEW: Manage regen for all currently existing players
     for _, player in ipairs(Players:GetPlayers()) do
+        -- Initialize player state as in shadow (safe default)
+        _playerSunlightState[player.UserId] = false
+        
         if player.Character then
-            ManagePlayerRegen(player)
+            ManagePlayerRegen(player, false) -- Start in shadow
         end
         -- Also connect CharacterAdded for existing players in case they respawn
         player.CharacterAdded:Connect(function(character)
-            ManagePlayerRegen(player)
+            ManagePlayerRegen(player, false) -- Start in shadow
         end)
     end
 end
@@ -140,6 +164,14 @@ function SunlightSystem:CheckSunlightExposure()
             -- If raycastResult is nil, it means the ray went through everything to the sky,
             -- implying direct sunlight. If it hit something, the player is in shadow.
             local inSunlight = raycastResult == nil
+            
+            -- Check if player's sunlight state has changed
+            local previousSunlightState = _playerSunlightState[player.UserId]
+            if previousSunlightState ~= inSunlight then
+                -- State changed, update regeneration
+                ManagePlayerRegen(player, inSunlight)
+                _playerSunlightState[player.UserId] = inSunlight
+            end
 
             if inSunlight and _sunlightDamageEnabled then
                 local lastDamage = _lastDamageTime[player.UserId] or 0
