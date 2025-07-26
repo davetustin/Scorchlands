@@ -24,7 +24,7 @@ local _isBuildingMode = false
 local _selectedStructureType = nil
 local _currentPreviewModel = nil
 local _currentPreviewPrimaryPart = nil
-local _gridSize = Constants.BUILDING_GRID.DEFAULT_GRID_SIZE -- Grid size for basic snapping
+local _gridSize = Constants.BUILDING_GRID.GRID_SIZE -- Grid size for all structures
 local _currentRotation = 0 -- 0, 90, 180, 270 degrees
 
 -- REMOVED: Get RemoteFunction here. It will be retrieved in Init()
@@ -136,12 +136,8 @@ local function UpdatePreview()
     local snappedY = math.floor(targetPosition.Y / _gridSize + 0.5) * _gridSize
     local snappedZ = math.floor(targetPosition.Z / _gridSize + 0.5) * _gridSize
 
-    -- For walls, floors, and roofs, use precise grid for more precise positioning
-    if _selectedStructureType == Constants.STRUCTURE_TYPES.WALL or _selectedStructureType == Constants.STRUCTURE_TYPES.FLOOR or _selectedStructureType == Constants.STRUCTURE_TYPES.ROOF then
-        local preciseGridSize = Constants.BUILDING_GRID.PRECISE_GRID_SIZE -- Precise grid size for walls, floors, and roofs
-        snappedX = math.floor(targetPosition.X / preciseGridSize + 0.5) * preciseGridSize
-        snappedZ = math.floor(targetPosition.Z / preciseGridSize + 0.5) * preciseGridSize
-    end
+    -- All structures use the same grid size for consistent positioning
+    -- Grid snapping is already applied above using _gridSize
 
     local snappedCFrame = CFrame.new(snappedX, snappedY, snappedZ)
 
