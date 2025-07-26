@@ -60,7 +60,8 @@ local function addToBuffer(level, message)
        (level == "DEBUG" and message:find("SunlightSystem") and (message:find("Enabled health regeneration") or message:find("Disabled health regeneration"))) or
        (level == "WARN" and message:find("CommandSystem")) or
        (level == "DEBUG" and message:find("Client") and message:find("Executing server command")) or
-       (level == "INFO" and message:find("Server feedback")) then
+       (level == "INFO" and message:find("Server feedback")) or
+       (level == "DEBUG" and message:find("BuildingClient") and (message:find("Building mode ENABLED") or message:find("Building mode DISABLED") or message:find("Repair mode ENABLED") or message:find("Repair mode DISABLED"))) then
         Logger.FlushBuffer()
         return
     end
