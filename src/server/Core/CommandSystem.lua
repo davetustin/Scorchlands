@@ -12,6 +12,7 @@ local StateValidator = require(script.Parent.StateValidator)
 -- CORRECTED: NetworkManager is now in ReplicatedStorage.Shared
 local NetworkManager = require(game.ReplicatedStorage.Shared.NetworkManager)
 local ServiceRegistry = require(script.Parent.ServiceRegistry) -- To access other services for commands
+local GlobalRegistry = require(script.Parent.GlobalRegistry) -- For cross-service communication
 
 local CommandSystem = {}
 CommandSystem.__index = CommandSystem
@@ -57,6 +58,10 @@ end
 
 function CommandSystem:Start()
     BaseService.Start(self) -- Call parent Start
+    
+    -- Register this service in GlobalRegistry for cross-service communication
+    GlobalRegistry.Set("CommandSystem", self)
+    
     Logger.Info(self:GetServiceName(), "CommandSystem started. Ready to process commands.")
 
     -- Connect the server-side listener for command execution
@@ -67,7 +72,7 @@ function CommandSystem:Start()
     end
 
     -- Register the core commands
-    self:RegisterCommand("sunlightdamage", "Toggles sunlight damage on/off. Usage: /sunlightdamage [on|off]", function(player, status)
+    self:RegisterCommand("sunlightdamage", "Toggles player sunlight damage on/off. Usage: /sunlightdamage [on|off]", function(player, status)
         local sunlightSystem = ServiceRegistry.Get("SunlightSystem")
         if not sunlightSystem then
             self:SendFeedback(player, "Error: SunlightSystem not found.")
@@ -87,11 +92,39 @@ function CommandSystem:Start()
 
         if newStatus ~= nil then
             sunlightSystem:SetSunlightDamageEnabled(newStatus)
-            self:SendFeedback(player, "Sunlight damage is now: " .. (newStatus and "ENABLED" or "DISABLED"))
-            Logger.Info(self:GetServiceName(), "%s toggled sunlight damage to %s.", player.Name, newStatus and "ON" or "OFF")
+            self:SendFeedback(player, "Player sunlight damage is now: " .. (newStatus and "ENABLED" or "DISABLED"))
+            Logger.Info(self:GetServiceName(), "%s toggled player sunlight damage to %s.", player.Name, newStatus and "ON" or "OFF")
         else
             local currentStatus = sunlightSystem:IsSunlightDamageEnabled()
-            self:SendFeedback(player, "Current sunlight damage status: " .. (currentStatus and "ENABLED" or "DISABLED") .. ". Usage: /sunlightdamage [on|off]")
+            self:SendFeedback(player, "Current player sunlight damage status: " .. (currentStatus and "ENABLED" or "DISABLED") .. ". Usage: /sunlightdamage [on|off]")
+        end
+    end)
+
+    self:RegisterCommand("buildingsunlight", "Toggles building sunlight damage on/off. Usage: /buildingsunlight [on|off]", function(player, status)
+        local buildingSystem = ServiceRegistry.Get("BuildingSystem")
+        if not buildingSystem then
+            self:SendFeedback(player, "Error: BuildingSystem not found.")
+            Logger.Error(self:GetServiceName(), "BuildingSystem not found when executing buildingsunlight command.")
+            return
+        end
+
+        local newStatus = nil
+        if type(status) == "string" then
+            status = status:lower()
+            if status == "on" then
+                newStatus = true
+            elseif status == "off" then
+                newStatus = false
+            end
+        end
+
+        if newStatus ~= nil then
+            buildingSystem:SetBuildingSunlightDamageEnabled(newStatus)
+            self:SendFeedback(player, "Building sunlight damage is now: " .. (newStatus and "ENABLED" or "DISABLED"))
+            Logger.Info(self:GetServiceName(), "%s toggled building sunlight damage to %s.", player.Name, newStatus and "ON" or "OFF")
+        else
+            local currentStatus = buildingSystem:IsBuildingSunlightDamageEnabled()
+            self:SendFeedback(player, "Current building sunlight damage status: " .. (currentStatus and "ENABLED" or "DISABLED") .. ". Usage: /buildingsunlight [on|off]")
         end
     end)
 
@@ -99,6 +132,47 @@ function CommandSystem:Start()
     self:RegisterCommand("hello", "Says hello to the player. Usage: /hello", function(player)
         self:SendFeedback(player, "Hello, " .. player.Name .. "!")
         Logger.Info(self:GetServiceName(), "%s used the hello command.", player.Name)
+    end)
+
+    -- Resource system commands
+    self:RegisterCommand("spawnresource", "Spawns a resource node at your position. Usage: /spawnresource [wood|stone|metal]", function(player, resourceType)
+        local resourceSystem = ServiceRegistry.Get("ResourceSystem")
+        if not resourceSystem then
+            self:SendFeedback(player, "Error: ResourceSystem not found.")
+            Logger.Error(self:GetServiceName(), "ResourceSystem not found when executing spawnresource command.")
+            return
+        end
+
+        local validTypes = {"wood", "stone", "metal"}
+        resourceType = resourceType and resourceType:lower() or "wood"
+        
+        if not table.find(validTypes, resourceType) then
+            self:SendFeedback(player, "Invalid resource type. Valid types: " .. table.concat(validTypes, ", "))
+            return
+        end
+
+        local character = player.Character
+        if not character or not character:FindFirstChild("HumanoidRootPart") then
+            self:SendFeedback(player, "Error: Character not found.")
+            return
+        end
+
+        local position = character.HumanoidRootPart.Position
+        local nodeId = resourceSystem:ForceSpawnResourceNode(resourceType:upper(), position)
+        
+        if nodeId then
+            self:SendFeedback(player, "Spawned " .. resourceType .. " resource node at your position.")
+            Logger.Info(self:GetServiceName(), "%s spawned %s resource node.", player.Name, resourceType)
+        else
+            self:SendFeedback(player, "Failed to spawn resource node.")
+        end
+    end)
+
+    self:RegisterCommand("listresources", "Lists all available resource types. Usage: /listresources", function(player)
+        local resourceTypes = {"wood", "stone", "metal"}
+        local resourceList = table.concat(resourceTypes, ", ")
+        self:SendFeedback(player, "Available resource types: " .. resourceList)
+        Logger.Info(self:GetServiceName(), "%s listed resource types.", player.Name)
     end)
 
     Logger.Info(self:GetServiceName(), "Core commands registered.")

@@ -28,12 +28,15 @@ Constants.DEFAULT_LOG_LEVEL = Constants.LOG_LEVEL.DEBUG
 Constants.NETWORK_EVENTS = {
     SERVER_NOTIFY_HEALTH_UPDATE = "ServerNotifyHealthUpdate",
     CLIENT_REQUEST_INTERACT = "ClientRequestInteract",
+    SERVER_NOTIFY_RESOURCE_GATHERED = "ServerNotifyResourceGathered",
+    SERVER_NOTIFY_RESOURCE_NODE_UPDATE = "ServerNotifyResourceNodeUpdate",
 }
 
 -- RemoteFunction names (separate from RemoteEvents)
 Constants.REMOTE_FUNCTIONS = {
     CLIENT_REQUEST_BUILD = "ClientRequestBuild",
     CLIENT_REQUEST_REPAIR = "ClientRequestRepair",
+    CLIENT_REQUEST_GATHER_RESOURCE = "ClientRequestGatherResource",
 }
 
 -- DataStore keys (example)
@@ -99,6 +102,32 @@ Constants.MAX_STRUCTURE_COUNT_PER_PLAYER = 100 -- Maximum structures per player
 -- Building Grid System Constants
 Constants.BUILDING_GRID = {
     GRID_SIZE = 4, -- Grid size for all structures
+}
+
+-- Resource System Constants
+Constants.RESOURCES = {
+    WOOD = {
+        name = "Wood",
+        displayName = "Wood",
+        description = "Basic building material from trees",
+        color = BrickColor.new("Brown"),
+        material = Enum.Material.Wood,
+        gatherTime = 2.0, -- seconds to gather
+        respawnTime = 30.0, -- seconds to respawn
+        maxQuantity = 5, -- max resources per node
+        modelName = "WoodNode", -- name of the model in ReplicatedStorage
+    },
+    -- Future resources can be added here:
+    -- STONE = { name = "Stone", displayName = "Stone", ... },
+    -- METAL = { name = "Metal", displayName = "Metal", ... },
+}
+
+-- Resource Node Constants
+Constants.RESOURCE_NODES = {
+    DEFAULT_SPAWN_RADIUS = 100, -- studs from spawn point
+    MIN_DISTANCE_BETWEEN_NODES = 20, -- minimum distance between resource nodes
+    MAX_NODES_PER_RESOURCE_TYPE = 10, -- maximum nodes of each type in the world
+    NODE_HEALTH = 100, -- health of resource nodes
 }
 
 -- Default dimensions for basic building parts (in studs)

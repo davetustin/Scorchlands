@@ -22,6 +22,7 @@ local CommandFeedbackEvent = NetworkManager.GetRemoteEvent("CommandFeedback")
 -- This line expects BuildingClient to be a ModuleScript directly under PlayerScripts.
 local ClientModulesPath = script.Parent:WaitForChild("Client")
 local BuildingClient = require(ClientModulesPath.BuildingClient)
+local ResourceClient = require(ClientModulesPath.ResourceClient)
 
 --[[
     handleCommandInput(message)
@@ -114,6 +115,9 @@ end
 
 -- Initialize the client-side building system
 BuildingClient.Init()
+
+-- Initialize the client-side resource system
+ResourceClient:Init()
 
 Logger.Info("Client", "Client initialization complete")
 

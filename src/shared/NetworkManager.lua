@@ -104,6 +104,26 @@ function NetworkManager.GetRemoteFunction(functionName)
     end
 end
 
+--[[
+    NetworkManager.FireClient(player, eventName, data)
+    Fires a RemoteEvent to a specific client.
+    @param player Player: The player to send the event to
+    @param eventName string: The name of the RemoteEvent
+    @param data any: The data to send to the client
+]]
+function NetworkManager.FireClient(player, eventName, data)
+    if RunService:IsClient() then
+        error("NetworkManager: FireClient cannot be called on the client")
+    end
+    
+    local event = _remoteEvents[eventName]
+    if not event then
+        error("NetworkManager: Attempted to fire unregistered RemoteEvent: " .. eventName)
+    end
+    
+    event:FireClient(player, data)
+end
+
 -- Example usage on server:
 -- NetworkManager.GetRemoteEvent(Constants.NETWORK_EVENTS.CLIENT_REQUEST_BUILD).OnServerEvent:Connect(function(player, ...)
 --     -- Handle build request

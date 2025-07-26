@@ -10,7 +10,6 @@ local Logger = require(game.ReplicatedStorage.Shared.Logger)
 local Constants = require(game.ReplicatedStorage.Shared.Constants)
 local StateValidator = require(game.ServerScriptService.Server.Core.StateValidator)
 local NetworkManager = require(game.ReplicatedStorage.Shared.NetworkManager)
-local DataManager = require(game.ServerScriptService.Server.Core.DataManager)
 local GlobalRegistry = require(game.ServerScriptService.Server.Core.GlobalRegistry)
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
@@ -602,6 +601,10 @@ function BuildingSystem:CheckSunlightExposure(deltaTime)
         if structure then
             local isExposed = self:IsStructureExposedToSunlight(structure, rayDirection)
             
+            -- Debug: Log sunlight exposure status for all structures
+            Logger.Debug(self:GetServiceName(), "Structure %s (health: %.1f) sunlight exposure: %s", 
+                structureId, healthData.health, isExposed and "EXPOSED" or "SHADED")
+            
             if isExposed and _buildingSunlightDamageEnabled then
                 self:ApplySunlightDamage(structureId, healthData, deltaTime)
             end
@@ -619,17 +622,37 @@ end
 function BuildingSystem:IsStructureExposedToSunlight(structure, rayDirection)
     local primaryPart = structure.PrimaryPart
     if not primaryPart then
+        Logger.Debug(self:GetServiceName(), "Structure %s has no primary part", structure.Name)
         return false
     end
     
-    local rayOrigin = primaryPart.Position
     local rayParams = RaycastParams.new()
     rayParams.FilterType = Enum.RaycastFilterType.Exclude
-    rayParams.FilterDescendantsInstances = {structure}
+    
+    -- Exclude ALL placed structures from the raycast to prevent walls from shading each other
+    local structuresToExclude = {}
+    for _, placedStructure in ipairs(_placedStructures) do
+        table.insert(structuresToExclude, placedStructure)
+    end
+    rayParams.FilterDescendantsInstances = structuresToExclude
     rayParams.IgnoreWater = true
     
+    -- Only check the primary part position to determine if the structure is exposed
+    -- This prevents floors from taking damage when they're under a roof
+    local rayOrigin = primaryPart.Position
     local raycastResult = Workspace:Raycast(rayOrigin, rayDirection, rayParams)
-    return raycastResult == nil -- No hit means exposed to sunlight
+    local isExposed = raycastResult == nil -- No hit means exposed to sunlight
+    
+    -- Debug: Log raycast details for structures that seem to be staying healthy
+    if isExposed then
+        Logger.Debug(self:GetServiceName(), "Structure %s at %s is EXPOSED to sunlight", 
+            structure.Name, tostring(rayOrigin))
+    else
+        Logger.Debug(self:GetServiceName(), "Structure %s at %s is SHADED by %s", 
+            structure.Name, tostring(rayOrigin), raycastResult and raycastResult.Instance.Name or "unknown")
+    end
+    
+    return isExposed
 end
 
 --[[
@@ -923,6 +946,43 @@ end
 ]]
 function BuildingSystem:IsBuildingSunlightDamageEnabled()
     return _buildingSunlightDamageEnabled
+end
+
+--[[
+    BuildingSystem:HandleBuildRequest(player, structureType, cframe)
+    Handles a client request to build a structure.
+    @param player Player: The player requesting to build
+    @param structureType string: The type of structure to build
+    @param cframe CFrame: The CFrame where the structure should be placed
+    @return boolean: True if build was successful, false otherwise
+]]
+function BuildingSystem:HandleBuildRequest(player, structureType, cframe)
+    if not player or not structureType or not cframe then
+        Logger.Warn(self:GetServiceName(), "Invalid build request: player=%s, structureType=%s, cframe=%s", 
+            tostring(player), tostring(structureType), tostring(cframe))
+        return false
+    end
+    
+    -- Validate structure type
+    if not Constants.STRUCTURE_TYPES[structureType:upper()] then
+        Logger.Warn(self:GetServiceName(), "Invalid structure type: %s", structureType)
+        return false, "Invalid structure type"
+    end
+    
+    -- Log the request
+    Logger.Info(self:GetServiceName(), "Player %s requested to build %s at %s", 
+        player.Name, structureType, tostring(cframe))
+    
+    -- Actually place the structure using the existing PlaceStructure method
+    local success, errorMessage = self:PlaceStructure(player, structureType, cframe)
+    
+    if success then
+        Logger.Info(self:GetServiceName(), "Successfully placed %s structure for player %s", structureType, player.Name)
+    else
+        Logger.Warn(self:GetServiceName(), "Failed to place %s structure for player %s: %s", structureType, player.Name, errorMessage or "Unknown error")
+    end
+    
+    return success
 end
 
 return BuildingSystem
