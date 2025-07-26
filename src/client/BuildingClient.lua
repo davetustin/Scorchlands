@@ -24,7 +24,7 @@ local _isBuildingMode = false
 local _selectedStructureType = nil
 local _currentPreviewModel = nil
 local _currentPreviewPrimaryPart = nil
-local _gridSize = 4 -- Grid size for basic snapping
+local _gridSize = Constants.BUILDING_GRID.DEFAULT_GRID_SIZE -- Grid size for basic snapping
 local _currentRotation = 0 -- 0, 90, 180, 270 degrees
 
 -- REMOVED: Get RemoteFunction here. It will be retrieved in Init()
@@ -136,11 +136,11 @@ local function UpdatePreview()
     local snappedY = math.floor(targetPosition.Y / _gridSize + 0.5) * _gridSize
     local snappedZ = math.floor(targetPosition.Z / _gridSize + 0.5) * _gridSize
 
-    -- For walls, use 2-stud grid for more precise positioning
-    if _selectedStructureType == Constants.STRUCTURE_TYPES.WALL then
-        local wallGridSize = 2 -- 2-stud grid for walls
-        snappedX = math.floor(targetPosition.X / wallGridSize + 0.5) * wallGridSize
-        snappedZ = math.floor(targetPosition.Z / wallGridSize + 0.5) * wallGridSize
+    -- For walls, floors, and roofs, use precise grid for more precise positioning
+    if _selectedStructureType == Constants.STRUCTURE_TYPES.WALL or _selectedStructureType == Constants.STRUCTURE_TYPES.FLOOR or _selectedStructureType == Constants.STRUCTURE_TYPES.ROOF then
+        local preciseGridSize = Constants.BUILDING_GRID.PRECISE_GRID_SIZE -- Precise grid size for walls, floors, and roofs
+        snappedX = math.floor(targetPosition.X / preciseGridSize + 0.5) * preciseGridSize
+        snappedZ = math.floor(targetPosition.Z / preciseGridSize + 0.5) * preciseGridSize
     end
 
     local snappedCFrame = CFrame.new(snappedX, snappedY, snappedZ)
@@ -216,7 +216,7 @@ function BuildingClient:HandleInput(input, gameProcessedEvent)
             else
                 Logger.Warn("BuildingClient", "ClientRequestBuild RemoteFunction not available.")
             end
-        elseif input.UserInputType == Enum.UserInputType.MouseButton2 then -- Right click to rotate
+        elseif input.KeyCode == Enum.KeyCode.R then -- R key to rotate
             if _isBuildingMode then
                 _currentRotation = (_currentRotation + 90) % 360
                 Logger.Debug("BuildingClient", "Rotated preview to %d degrees.", _currentRotation)

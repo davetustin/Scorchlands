@@ -63,10 +63,16 @@ Constants.STRUCTURE_TYPES = {
 }
 Constants.MAX_STRUCTURE_HEALTH = 100 -- Default health for newly placed structures
 
+-- Building Grid System Constants
+Constants.BUILDING_GRID = {
+    DEFAULT_GRID_SIZE = 4, -- Default grid size for general structures
+    PRECISE_GRID_SIZE = 2, -- Precise grid size for walls, floors, and roofs
+}
+
 -- NEW: Default dimensions for basic building parts (in studs)
 Constants.BUILDING_PART_DEFAULTS = {
     Wall = {
-        Size = Vector3.new(4, 8, 0.5), -- Common wall size
+        Size = Vector3.new(8, 8, 0.5), -- Common wall size
         Color = BrickColor.new("Dark stone grey"),
         Material = Enum.Material.Concrete,
     },
