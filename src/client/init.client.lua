@@ -24,6 +24,9 @@ local ClientModulesPath = script.Parent:WaitForChild("Client")
 local BuildingClient = require(ClientModulesPath.BuildingClient)
 local ResourceClient = require(ClientModulesPath.ResourceClient)
 
+-- NEW: Require the BuildingUI module
+local BuildingUI = require(ClientModulesPath.Interface.BuildingUI)
+
 --[[
     handleCommandInput(message)
     Processes chat messages to check for commands and sends them to the server.
@@ -31,26 +34,8 @@ local ResourceClient = require(ClientModulesPath.ResourceClient)
     @param message string: The raw chat message.
 ]]
 local function handleCommandInput(message)
-    -- Check for local client-side building commands first (for testing)
-    local lowerMessage = message:lower()
-    if lowerMessage == "/build wall" then
-        Logger.Debug("Client", "Enabling building mode: Wall")
-        BuildingClient:EnableBuildingMode(Constants.STRUCTURE_TYPES.WALL)
-        return true
-    elseif lowerMessage == "/build floor" then
-        Logger.Debug("Client", "Enabling building mode: Floor")
-        BuildingClient:EnableBuildingMode(Constants.STRUCTURE_TYPES.FLOOR)
-        return true
-    elseif lowerMessage == "/build roof" then
-        Logger.Debug("Client", "Enabling building mode: Roof")
-        BuildingClient:EnableBuildingMode(Constants.STRUCTURE_TYPES.ROOF)
-        return true
-    elseif lowerMessage == "/build off" then
-        Logger.Debug("Client", "Disabling building mode")
-        BuildingClient:DisableBuildingMode()
-        return true
-    end
-
+    -- REMOVED: Local client-side building commands - now handled by BuildingUI
+    
     -- Check for server commands (starting with '/')
     if message:sub(1, 1) == "/" then
         local commandString = message:sub(2) -- Remove the leading '/'
@@ -118,6 +103,36 @@ BuildingClient.Init()
 
 -- Initialize the client-side resource system
 ResourceClient:Init()
+
+-- NEW: Initialize the BuildingUI system
+BuildingUI:Init()
+
+-- NEW: Connect BuildingUI to BuildingClient
+BuildingUI:SetBuildingClient(BuildingClient)
+
+-- NEW: Connect BuildingClient callbacks to BuildingUI
+BuildingClient:SetCallbacks(
+    function(isBuildingMode, structureType)
+        -- Callback when building mode changes
+        if isBuildingMode then
+            -- Logger.Debug("Client", "Building mode enabled: %s", structureType)
+        else
+            -- Logger.Debug("Client", "Building mode disabled")
+            -- Deselect all buttons when building mode is disabled
+            BuildingUI:DeselectAll()
+        end
+    end,
+    function(isRepairMode)
+        -- Callback when repair mode changes
+        if isRepairMode then
+            -- Logger.Debug("Client", "Repair mode enabled")
+        else
+            -- Logger.Debug("Client", "Repair mode disabled")
+            -- Deselect all buttons when repair mode is disabled
+            BuildingUI:DeselectAll()
+        end
+    end
+)
 
 Logger.Info("Client", "Client initialization complete")
 

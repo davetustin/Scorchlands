@@ -115,7 +115,7 @@ Constants.RESOURCES = {
         gatherTime = 2.0, -- seconds to gather
         respawnTime = 30.0, -- seconds to respawn
         maxQuantity = 5, -- max resources per node
-        modelName = "WoodNode", -- name of the model in ReplicatedStorage
+        modelName = "FallbackWoodNode", -- fallback model created by ResourceNodeBuilder
     },
     -- Future resources can be added here:
     -- STONE = { name = "Stone", displayName = "Stone", ... },

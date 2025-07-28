@@ -89,16 +89,6 @@ function ResourceSystem:Start()
     print("ResourceSystem Start() method called - DEBUG") -- Very early debug print
     Logger.Info(self:GetServiceName(), "ResourceSystem Start() method called")
     
-    if not self._isInitialized then
-        Logger.Warn(self:GetServiceName(), "ResourceSystem not initialized before starting.")
-        self:Init()
-    end
-    
-    if self._isStarted then
-        Logger.Warn(self:GetServiceName(), "ResourceSystem already started.")
-        return
-    end
-    
     Logger.Info(self:GetServiceName(), "Calling BaseService.Start...")
     -- Call parent start
     BaseService.Start(self)
@@ -142,7 +132,7 @@ function ResourceSystem:_LoadResourceModels()
             Logger.Debug(self:GetServiceName(), "Loaded resource model: %s", modelName)
         else
             -- Create a fallback model using ResourceNodeBuilder
-            Logger.Warn(self:GetServiceName(), "Resource model not found: %s, creating fallback", modelName)
+            Logger.Debug(self:GetServiceName(), "Resource model not found: %s, creating fallback model", modelName)
             local fallbackModel = ResourceNodeBuilder:CreateResourceNode(resourceType)
             if fallbackModel then
                 _resourceModels[resourceType] = fallbackModel

@@ -26,14 +26,40 @@ local _currentPreviewModel = nil
 local _currentPreviewPrimaryPart = nil
 local _gridSize = Constants.BUILDING_GRID.GRID_SIZE -- Grid size for all structures
 local _currentRotation = 0 -- 0, 90, 180, 270 degrees
+local _inputCounter = 0 -- Debug counter for input events
+local _lastHotkeyTime = 0 -- Track when hotkeys were pressed to prevent immediate placement
 
 -- Private variables for repair mode
 local _isRepairMode = false
 local _repairTarget = nil -- The structure being targeted for repair
 
+-- NEW: Callback system for UI feedback
+local _onBuildingModeChanged = nil
+local _onRepairModeChanged = nil
+
 -- REMOVED: Get RemoteFunction here. It will be retrieved in Init()
 local ClientRequestBuild = nil
 local ClientRequestRepair = nil
+
+--[[
+    BuildingClient:SetCallbacks(onBuildingModeChanged, onRepairModeChanged)
+    Sets callback functions for UI feedback.
+    @param onBuildingModeChanged function: Called when building mode changes
+    @param onRepairModeChanged function: Called when repair mode changes
+]]
+function BuildingClient:SetCallbacks(onBuildingModeChanged, onRepairModeChanged)
+    _onBuildingModeChanged = onBuildingModeChanged
+    _onRepairModeChanged = onRepairModeChanged
+end
+
+--[[
+    BuildingClient:OnHotkeyPressed()
+    Called when a hotkey is pressed to prevent immediate placement.
+]]
+function BuildingClient:OnHotkeyPressed()
+    _lastHotkeyTime = tick()
+    Logger.Debug("BuildingClient", "Hotkey pressed, setting last hotkey time to: %f", _lastHotkeyTime)
+end
 
 --[[
     BuildingClient:EnableBuildingMode(structureType)
@@ -41,38 +67,102 @@ local ClientRequestRepair = nil
     @param structureType string: The type of structure to build (e.g., "Wall", "Floor").
 ]]
 function BuildingClient:EnableBuildingMode(structureType)
+    Logger.Debug("BuildingClient", "EnableBuildingMode called for: %s (current mode: %s)", 
+        structureType, _isBuildingMode and _selectedStructureType or "none")
+    
     if not Constants.STRUCTURE_TYPES[structureType:upper()] then
         Logger.Warn("BuildingClient", "Invalid structure type provided: %s", structureType)
         return
     end
 
+    -- Disable repair mode if active
+    if _isRepairMode then
+        Logger.Debug("BuildingClient", "Disabling repair mode before enabling building mode")
+        self:DisableRepairMode()
+    end
+
     _isBuildingMode = true
     _selectedStructureType = structureType
     _currentRotation = 0 -- Reset rotation when enabling mode
+    
+    Logger.Debug("BuildingClient", "Building mode state set - isBuildingMode: %s, selectedStructureType: %s", 
+        tostring(_isBuildingMode), _selectedStructureType)
 
     -- Create and display the preview model
-    local modelTemplate = ReplicatedStorage:FindFirstChild(structureType)
+    local modelTemplate = ReplicatedStorage:FindFirstChild("BuildingModels"):FindFirstChild(structureType)
     if modelTemplate and modelTemplate:IsA("Model") then
+        -- CRITICAL: Destroy any existing preview model before creating a new one
+        if _currentPreviewModel then
+            Logger.Debug("BuildingClient", "Destroying existing preview model before creating new one: %s", _currentPreviewModel.Name)
+            _currentPreviewModel:Destroy()
+            _currentPreviewModel = nil
+            _currentPreviewPrimaryPart = nil
+        end
+        
         _currentPreviewModel = modelTemplate:Clone()
         _currentPreviewModel.Parent = Workspace.CurrentCamera -- Parent to camera for local visibility
         _currentPreviewModel.Archivable = false -- Don't save this temporary model
+        _currentPreviewModel.Name = "PreviewModel_" .. structureType -- Give it a clear preview name
+        
+        Logger.Debug("BuildingClient", "Created preview model for %s - Model: %s, Parent: %s", 
+            structureType, tostring(_currentPreviewModel), tostring(_currentPreviewModel.Parent))
 
         -- Set properties for preview
         for _, part in ipairs(_currentPreviewModel:GetDescendants()) do
             if part:IsA("BasePart") then
-                part.Transparency = 0.7 -- More transparent
+                part.Transparency = 0.8 -- More transparent to clearly distinguish from placed structures
                 part.CanCollide = false
                 part.CanQuery = false -- Ignore raycasts
                 part.Anchored = true
+                part.Name = "PreviewPart_" .. part.Name -- Give preview parts clear names
+                
+                -- CRITICAL: Mark this as a preview part to prevent it from being treated as a real structure
+                local previewTag = Instance.new("BoolValue")
+                previewTag.Name = "IsPreviewPart"
+                previewTag.Value = true
+                previewTag.Parent = part
+                
+                -- Add blue glow effect for preview
+                local highlight = Instance.new("Highlight")
+                highlight.FillColor = Color3.fromRGB(0, 150, 255) -- Blue glow
+                highlight.OutlineColor = Color3.fromRGB(0, 100, 200)
+                highlight.FillTransparency = 0.1 -- More visible glow
+                highlight.OutlineTransparency = 0.2 -- More visible outline
+                highlight.Parent = part
+                
+                Logger.Debug("BuildingClient", "Preview part created: %s, Transparency: %s, CanCollide: %s", 
+                    part.Name, tostring(part.Transparency), tostring(part.CanCollide))
+                
+                -- Add pulsing effect to make it clear this is a preview
+                local pulseConnection
+                pulseConnection = RunService.Heartbeat:Connect(function()
+                    if part.Parent and part:FindFirstChild("IsPreviewPart") then
+                        -- Pulse the transparency slightly
+                        local pulse = math.sin(tick() * 3) * 0.1 -- Pulse between 0.7 and 0.9 transparency
+                        part.Transparency = 0.8 + pulse
+                    else
+                        -- Clean up connection if part is destroyed or no longer a preview
+                        if pulseConnection then
+                            pulseConnection:Disconnect()
+                            pulseConnection = nil
+                        end
+                    end
+                end)
             end
         end
         _currentPreviewPrimaryPart = _currentPreviewModel.PrimaryPart
     else
-        Logger.Warn("BuildingClient", "Could not find model template for %s in ReplicatedStorage.", structureType)
+        Logger.Warn("BuildingClient", "Could not find model template for %s in ReplicatedStorage.BuildingModels.", structureType)
         self:DisableBuildingMode()
+        return
     end
 
-    Logger.Debug("BuildingClient", "Building mode ENABLED for %s", structureType)
+    -- Notify UI of mode change
+    if _onBuildingModeChanged then
+        _onBuildingModeChanged(true, structureType)
+    end
+
+    -- Logger.Debug("BuildingClient", "Building mode ENABLED for %s", structureType)
 end
 
 --[[
@@ -80,17 +170,27 @@ end
     Disables building mode and cleans up the preview model.
 ]]
 function BuildingClient:DisableBuildingMode()
+    Logger.Debug("BuildingClient", "DisableBuildingMode called - cleaning up preview model")
+    
     _isBuildingMode = false
     _selectedStructureType = nil
     _currentRotation = 0
 
     if _currentPreviewModel then
+        Logger.Debug("BuildingClient", "Destroying preview model: %s", _currentPreviewModel.Name)
         _currentPreviewModel:Destroy()
         _currentPreviewModel = nil
         _currentPreviewPrimaryPart = nil
+    else
+        Logger.Debug("BuildingClient", "No preview model to destroy")
     end
 
-    Logger.Debug("BuildingClient", "Building mode DISABLED.")
+    -- Notify UI of mode change
+    if _onBuildingModeChanged then
+        _onBuildingModeChanged(false, nil)
+    end
+
+    -- Logger.Debug("BuildingClient", "Building mode DISABLED.")
 end
 
 --[[
@@ -105,7 +205,12 @@ function BuildingClient:EnableRepairMode()
     _isRepairMode = true
     _repairTarget = nil
     
-    Logger.Debug("BuildingClient", "Repair mode ENABLED.")
+    -- Notify UI of mode change
+    if _onRepairModeChanged then
+        _onRepairModeChanged(true)
+    end
+    
+    -- Logger.Debug("BuildingClient", "Repair mode ENABLED.")
 end
 
 --[[
@@ -116,7 +221,12 @@ function BuildingClient:DisableRepairMode()
     _isRepairMode = false
     _repairTarget = nil
     
-    Logger.Debug("BuildingClient", "Repair mode DISABLED.")
+    -- Notify UI of mode change
+    if _onRepairModeChanged then
+        _onRepairModeChanged(false)
+    end
+    
+    -- Logger.Debug("BuildingClient", "Repair mode DISABLED.")
 end
 
 --[[
@@ -207,7 +317,16 @@ end
     Called on Heartbeat.
 ]]
 local function UpdatePreview()
-    if not _isBuildingMode or not _currentPreviewModel or not _currentPreviewPrimaryPart then return end
+    if not _isBuildingMode or not _currentPreviewModel or not _currentPreviewPrimaryPart then 
+        return 
+    end
+    
+    -- DEBUG: Log when UpdatePreview is called to see if it's running unexpectedly
+    -- Only log occasionally to avoid spam
+    if tick() % 1 < 0.1 then -- Log roughly once per second
+        Logger.Debug("BuildingClient", "UpdatePreview called - isBuildingMode: %s, hasPreviewModel: %s, hasPrimaryPart: %s", 
+            tostring(_isBuildingMode), tostring(_currentPreviewModel ~= nil), tostring(_currentPreviewPrimaryPart ~= nil))
+    end
 
     local mouseHit = PlayerMouse.Hit
     local camera = Workspace.CurrentCamera
@@ -282,6 +401,9 @@ local function UpdatePreview()
     -- Apply current rotation
     snappedCFrame = snappedCFrame * CFrame.Angles(0, math.rad(_currentRotation), 0)
 
+    -- Position the preview model at the calculated position
+    -- The preview model is parented to the camera, so it will appear in the world
+    -- but won't interfere with actual structures since it's marked as a preview
     _currentPreviewModel:SetPrimaryPartCFrame(snappedCFrame)
 end
 
@@ -292,13 +414,84 @@ end
     @param gameProcessedEvent boolean: True if the game engine has already processed this input.
 ]]
 function BuildingClient:HandleInput(input, gameProcessedEvent)
-    if gameProcessedEvent then return end -- Ignore if game engine already handled it
+    _inputCounter = _inputCounter + 1
+    Logger.Debug("BuildingClient", "HandleInput called with: %s (gameProcessed: %s) - Counter: %d", 
+        input.KeyCode and input.KeyCode.Name or input.UserInputType.Name, 
+        tostring(gameProcessedEvent),
+        _inputCounter)
+    
+    if gameProcessedEvent then 
+        Logger.Debug("BuildingClient", "Input was game processed, ignoring")
+        return 
+    end
+    
+    -- CRITICAL: Safety check for Unknown inputs (but only if they don't have a valid UserInputType)
+    if input.KeyCode and input.KeyCode == Enum.KeyCode.Unknown and not input.UserInputType then
+        Logger.Debug("BuildingClient", "CRITICAL: Received Unknown input with no UserInputType, ignoring")
+        return
+    end
+    
+    -- CRITICAL: Safety check - BuildingClient should NEVER receive hotkeys or UI keys
+    -- This is a double-check in case the UI delegation fails
+    if input.KeyCode == Enum.KeyCode.One or 
+       input.KeyCode == Enum.KeyCode.Two or 
+       input.KeyCode == Enum.KeyCode.Three or 
+       input.KeyCode == Enum.KeyCode.Four or
+       input.KeyCode == Enum.KeyCode.Escape or
+       input.KeyCode == Enum.KeyCode.Q then
+        Logger.Error("BuildingClient", "CRITICAL: Received hotkey/UI input that should have been filtered: %s", input.KeyCode.Name)
+        return -- Don't process hotkeys here
+    end
+    
+    -- ADDITIONAL DEBUG: Log all inputs that reach this point
+    Logger.Debug("BuildingClient", "Processing input: %s (KeyCode: %s, UserInputType: %s)", 
+        input.KeyCode and input.KeyCode.Name or input.UserInputType.Name,
+        input.KeyCode and input.KeyCode.Name or "none",
+        input.UserInputType and input.UserInputType.Name or "none")
+    
+    -- CRITICAL: Additional safety check - log the call stack to see where this is being called from
+    Logger.Debug("BuildingClient", "CRITICAL: BuildingClient HandleInput called from: %s", debug.traceback())
 
-    if _isBuildingMode then
+    if _isBuildingMode and _currentPreviewModel and _currentPreviewPrimaryPart then
+        Logger.Debug("BuildingClient", "In building mode with valid preview, checking input type: %s", 
+            input.UserInputType and input.UserInputType.Name or (input.KeyCode and input.KeyCode.Name or "unknown"))
         if input.UserInputType == Enum.UserInputType.MouseButton1 then -- Left click to place
+            Logger.Debug("BuildingClient", "CRITICAL: Left click detected - attempting to place structure")
+            Logger.Debug("BuildingClient", "Building mode: %s, Preview model: %s, Primary part: %s", 
+                tostring(_isBuildingMode), tostring(_currentPreviewModel ~= nil), tostring(_currentPreviewPrimaryPart ~= nil))
+            Logger.Debug("BuildingClient", "Current structure type: %s", _selectedStructureType)
+            Logger.Debug("BuildingClient", "Mouse position: %s", tostring(PlayerMouse.Hit.Position))
+            Logger.Debug("BuildingClient", "Preview model exists: %s", tostring(_currentPreviewModel ~= nil))
+            Logger.Debug("BuildingClient", "Preview primary part exists: %s", tostring(_currentPreviewPrimaryPart ~= nil))
+            
+            -- CRITICAL: Check if a hotkey was recently pressed to prevent accidental placement
+            local currentTime = tick()
+            Logger.Debug("BuildingClient", "CRITICAL: Current time: %f, last hotkey time: %f, difference: %f", 
+                currentTime, _lastHotkeyTime, currentTime - _lastHotkeyTime)
+            if currentTime - _lastHotkeyTime < 0.1 then -- 100ms buffer
+                Logger.Debug("BuildingClient", "CRITICAL: Mouse click too soon after hotkey press, ignoring to prevent accidental placement")
+                return
+            end
+            
+            if not _currentPreviewPrimaryPart then
+                Logger.Warn("BuildingClient", "No preview primary part available, cannot place structure")
+                return
+            end
+            
+            -- CRITICAL: Check if this is actually a preview part, not a real structure
+            if _currentPreviewPrimaryPart:FindFirstChild("IsPreviewPart") then
+                Logger.Debug("BuildingClient", "Preview part confirmed - proceeding with placement")
+            else
+                Logger.Warn("BuildingClient", "CRITICAL: Primary part is not marked as preview, aborting placement")
+                return
+            end
+            
             local cframeToPlace = _currentPreviewPrimaryPart.CFrame
+            Logger.Debug("BuildingClient", "Placing structure at CFrame: %s", tostring(cframeToPlace))
+            
             -- Send build request to server
             if ClientRequestBuild then -- Ensure RemoteFunction is available
+                Logger.Debug("BuildingClient", "CRITICAL: About to send build request for %s at %s", _selectedStructureType, tostring(cframeToPlace))
                 local success, message = ClientRequestBuild:InvokeServer(_selectedStructureType, cframeToPlace)
                 if success then
                     Logger.Debug("BuildingClient", "Successfully sent build request for %s", _selectedStructureType)
@@ -315,8 +508,9 @@ function BuildingClient:HandleInput(input, gameProcessedEvent)
                 _currentRotation = (_currentRotation + 90) % 360
                 Logger.Debug("BuildingClient", "Rotated preview to %d degrees.", _currentRotation)
             end
-        elseif input.KeyCode == Enum.KeyCode.Q then -- Q to disable building mode
-            self:DisableBuildingMode()
+        else
+            Logger.Debug("BuildingClient", "Building mode input not handled: %s", input.KeyCode and input.KeyCode.Name or input.UserInputType.Name)
+        -- Q key is handled by the UI, not here
         end
     elseif _isRepairMode then
         if input.UserInputType == Enum.UserInputType.MouseButton1 then -- Left click to repair
@@ -326,8 +520,7 @@ function BuildingClient:HandleInput(input, gameProcessedEvent)
             else
                 Logger.Debug("BuildingClient", "No structure found under mouse for repair.")
             end
-        elseif input.KeyCode == Enum.KeyCode.Q then -- Q to disable repair mode
-            self:DisableRepairMode()
+        -- Q key is handled by the UI, not here
         end
     end
     
@@ -373,10 +566,8 @@ function BuildingClient.Init()
     -- Connect Heartbeat to update preview position
     RunService.Heartbeat:Connect(UpdatePreview)
 
-    -- Connect UserInputService for placement and rotation
-    UserInputService.InputBegan:Connect(function(input, gameProcessedEvent)
-        BuildingClient:HandleInput(input, gameProcessedEvent)
-    end)
+    -- Input handling is now delegated through BuildingUI
+    -- UserInputService connection removed to prevent conflicts
 
     Logger.Debug("BuildingClient", "Client-side building system initialized.")
 end

@@ -35,6 +35,11 @@ local _buildingSunlightDamageEnabled = Constants.BUILDING_SUNLIGHT_DAMAGE_ENABLE
 -- Notification cooldown tracking to prevent spam
 local _notificationCooldowns = {} -- {structureId = {lastWarningTime, lastCriticalTime}}
 
+-- DataStore saving optimization
+local _pendingSaves = {} -- Map of playerId to pending save state
+local _saveCooldowns = {} -- Map of playerId to last save time
+local SAVE_COOLDOWN = 5 -- Minimum seconds between saves for the same player
+
 --[[
     BuildingSystem:SaveStructureData(playerId)
     Saves all structure data for a player to the DataManager.
@@ -103,6 +108,38 @@ function BuildingSystem:SaveStructureData(playerId)
     
     Logger.Debug(self:GetServiceName(), "Saved %d structures for player %d", 
         structureCount, playerId)
+end
+
+--[[
+    BuildingSystem:SaveStructureDataDebounced(playerId)
+    Saves structure data with debouncing to prevent DataStore spam.
+    @param playerId number: The UserId of the player.
+]]
+function BuildingSystem:SaveStructureDataDebounced(playerId)
+    local currentTime = tick()
+    
+    -- Check if we're in cooldown period
+    if _saveCooldowns[playerId] and (currentTime - _saveCooldowns[playerId]) < SAVE_COOLDOWN then
+        -- Mark as pending save if not already pending
+        if not _pendingSaves[playerId] then
+            _pendingSaves[playerId] = true
+            -- Schedule save after cooldown
+            task.spawn(function()
+                task.wait(SAVE_COOLDOWN - (currentTime - _saveCooldowns[playerId]))
+                if _pendingSaves[playerId] then
+                    _pendingSaves[playerId] = nil
+                    self:SaveStructureData(playerId)
+                    _saveCooldowns[playerId] = tick()
+                end
+            end)
+        end
+        return
+    end
+    
+    -- Save immediately and update cooldown
+    self:SaveStructureData(playerId)
+    _saveCooldowns[playerId] = currentTime
+    _pendingSaves[playerId] = nil
 end
 
 function BuildingSystem.new(serviceName)
@@ -351,8 +388,8 @@ function BuildingSystem:PlaceStructure(player, structureType, cframe)
 
     table.insert(_placedStructures, structureModel) -- Track placed structures
 
-    -- Save structure data to DataManager
-    self:SaveStructureData(player.UserId)
+    -- Save structure data to DataManager (debounced to prevent spam)
+    self:SaveStructureDataDebounced(player.UserId)
 
     -- 5. Deduct Resources (placeholder)
     -- self:DeductResources(playerData, structureType)
@@ -601,9 +638,9 @@ function BuildingSystem:CheckSunlightExposure(deltaTime)
         if structure then
             local isExposed = self:IsStructureExposedToSunlight(structure, rayDirection)
             
-            -- Debug: Log sunlight exposure status for all structures
-            Logger.Debug(self:GetServiceName(), "Structure %s (health: %.1f) sunlight exposure: %s", 
-                structureId, healthData.health, isExposed and "EXPOSED" or "SHADED")
+            -- Debug: Log sunlight exposure status for all structures (DISABLED for less verbose output)
+            -- Logger.Debug(self:GetServiceName(), "Structure %s (health: %.1f) sunlight exposure: %s", 
+            --     structureId, healthData.health, isExposed and "EXPOSED" or "SHADED")
             
             if isExposed and _buildingSunlightDamageEnabled then
                 self:ApplySunlightDamage(structureId, healthData, deltaTime)
@@ -629,10 +666,13 @@ function BuildingSystem:IsStructureExposedToSunlight(structure, rayDirection)
     local rayParams = RaycastParams.new()
     rayParams.FilterType = Enum.RaycastFilterType.Exclude
     
-    -- Exclude ALL placed structures from the raycast to prevent walls from shading each other
+    -- Exclude OTHER structures from the raycast, but NOT the current structure
+    -- This allows the current structure to detect if its own parts (like roof/walls) are blocking sunlight
     local structuresToExclude = {}
     for _, placedStructure in ipairs(_placedStructures) do
-        table.insert(structuresToExclude, placedStructure)
+        if placedStructure ~= structure then
+            table.insert(structuresToExclude, placedStructure)
+        end
     end
     rayParams.FilterDescendantsInstances = structuresToExclude
     rayParams.IgnoreWater = true
@@ -643,14 +683,14 @@ function BuildingSystem:IsStructureExposedToSunlight(structure, rayDirection)
     local raycastResult = Workspace:Raycast(rayOrigin, rayDirection, rayParams)
     local isExposed = raycastResult == nil -- No hit means exposed to sunlight
     
-    -- Debug: Log raycast details for structures that seem to be staying healthy
-    if isExposed then
-        Logger.Debug(self:GetServiceName(), "Structure %s at %s is EXPOSED to sunlight", 
-            structure.Name, tostring(rayOrigin))
-    else
-        Logger.Debug(self:GetServiceName(), "Structure %s at %s is SHADED by %s", 
-            structure.Name, tostring(rayOrigin), raycastResult and raycastResult.Instance.Name or "unknown")
-    end
+    -- Debug: Log raycast details for structures that seem to be staying healthy (DISABLED for less verbose output)
+    -- if isExposed then
+    --     Logger.Debug(self:GetServiceName(), "Structure %s at %s is EXPOSED to sunlight", 
+    --         structure.Name, tostring(rayOrigin))
+    -- else
+    --     Logger.Debug(self:GetServiceName(), "Structure %s at %s is SHADED by %s", 
+    --         structure.Name, tostring(rayOrigin), raycastResult and raycastResult.Instance.Name or "unknown")
+    -- end
     
     return isExposed
 end
@@ -896,8 +936,8 @@ function BuildingSystem:RepairStructure(structureId, player)
     Logger.Info(self:GetServiceName(), "Player %s repaired structure %s to full health.", 
         player.Name, structureId)
     
-    -- Save updated structure data
-    self:SaveStructureData(player.UserId)
+    -- Save updated structure data (debounced to prevent spam)
+    self:SaveStructureDataDebounced(player.UserId)
     
     return true
 end
@@ -916,7 +956,7 @@ function BuildingSystem:OnPlayerLeaving(player)
     Logger.Info(self:GetServiceName(), "Player %s (UserId: %d) is leaving. Saving their structures.", 
         player.Name, player.UserId)
     
-    -- Save the player's structures before they leave
+    -- Save the player's structures before they leave (force immediate save)
     self:SaveStructureData(player.UserId)
     
     -- Disable building sunlight damage when player leaves to prevent damage after disconnect
@@ -980,6 +1020,36 @@ function BuildingSystem:HandleBuildRequest(player, structureType, cframe)
         Logger.Info(self:GetServiceName(), "Successfully placed %s structure for player %s", structureType, player.Name)
     else
         Logger.Warn(self:GetServiceName(), "Failed to place %s structure for player %s: %s", structureType, player.Name, errorMessage or "Unknown error")
+    end
+    
+    return success
+end
+
+--[[
+    BuildingSystem:HandleRepairRequest(player, structureId)
+    Handles a client request to repair a structure.
+    @param player Player: The player requesting to repair
+    @param structureId string: The ID of the structure to repair
+    @return boolean: True if repair was successful, false otherwise
+]]
+function BuildingSystem:HandleRepairRequest(player, structureId)
+    if not player or not structureId then
+        Logger.Warn(self:GetServiceName(), "Invalid repair request: player=%s, structureId=%s", 
+            tostring(player), tostring(structureId))
+        return false
+    end
+    
+    -- Log the request
+    Logger.Info(self:GetServiceName(), "Player %s requested to repair structure %s", 
+        player.Name, structureId)
+    
+    -- Actually repair the structure using the existing RepairStructure method
+    local success = self:RepairStructure(structureId, player)
+    
+    if success then
+        Logger.Info(self:GetServiceName(), "Successfully repaired structure %s for player %s", structureId, player.Name)
+    else
+        Logger.Warn(self:GetServiceName(), "Failed to repair structure %s for player %s", structureId, player.Name)
     end
     
     return success

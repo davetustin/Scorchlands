@@ -64,7 +64,9 @@ function DataManager:LoadPlayerData(player)
             }
         end
     else
-        Logger.Error("DataManager", "Failed to load data for player %s: %s", player.Name, data)
+        -- Handle the case where 'data' might be an Instance or other non-string object
+        local errorMessage = tostring(data)
+        Logger.Error("DataManager", "Failed to load data for player %s: %s", player.Name, errorMessage)
         -- Fallback to default data in case of load failure
         return {
             lastLogin = os.time(),
@@ -98,7 +100,9 @@ function DataManager:SavePlayerData(player, data)
     if success then
         Logger.Info("DataManager", "Saved data for player %s.", player.Name)
     else
-        Logger.Error("DataManager", "Failed to save data for player %s: %s", player.Name, err)
+        -- Handle the case where 'err' might be an Instance or other non-string object
+        local errorMessage = tostring(err)
+        Logger.Error("DataManager", "Failed to save data for player %s: %s", player.Name, errorMessage)
     end
     return success
 end
@@ -128,7 +132,9 @@ function DataManager:LoadStructureData(playerId)
             return {}
         end
     else
-        Logger.Error("DataManager", "Failed to load structure data for player %d: %s", playerId, data)
+        -- Handle the case where 'data' might be an Instance or other non-string object
+        local errorMessage = tostring(data)
+        Logger.Error("DataManager", "Failed to load structure data for player %d: %s", playerId, errorMessage)
         return {}
     end
 end
@@ -149,7 +155,9 @@ function DataManager:SaveStructureData(playerId, structureData)
     if success then
         Logger.Info("DataManager", "Saved structure data for player %d.", playerId)
     else
-        Logger.Error("DataManager", "Failed to save structure data for player %d: %s", playerId, err)
+        -- Handle the case where 'err' might be an Instance or other non-string object
+        local errorMessage = tostring(err)
+        Logger.Error("DataManager", "Failed to save structure data for player %d: %s", playerId, errorMessage)
     end
     return success
 end
